@@ -184,18 +184,15 @@ export class UserService {
     return user;
   }
 
-  async getUserById(id: number, currentUser: Payload) {
-    
-  if (currentUser.role !== UserRole.ADMIN && currentUser.sub !== id) {
-    throw new ForbiddenException('Access denied: you can only view your own data.');
-  }
-
-  const user = await this.userRepository.findOne({where: { id },});
+  async getUserById(id: number) {
+  const user = await this.userRepository.findOne({
+    where: { id: id },
+    relations: ['address']
+  });
 
   if (!user) {
     throw new NotFoundException('User not found');
   }
-
   return user;
   }
 
@@ -262,12 +259,7 @@ export class UserService {
     return { message: 'Password reset successfully' };
   }
 
-  async deleteAccount(userIdFromToken: number, role: string, targetUserId: number) {
-
-  if (role !== UserRole.ADMIN && targetUserId !== userIdFromToken) {
-    throw new ForbiddenException('You are not allowed to delete another user account');
-  }
-
+  async deleteAccount(targetUserId: number) {
   const user = await this.userRepository.findOne({ where: { id: targetUserId } });
   if (!user) {
     throw new NotFoundException('User not found');
@@ -340,9 +332,4 @@ export class UserService {
       message: 'A new verification code has been sent to your email',
     };
   }
-
-
-
-
-
 }

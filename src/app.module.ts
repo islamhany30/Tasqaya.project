@@ -4,6 +4,7 @@ import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './user/user/user.module';
 import { MailModule } from './Mail/Mail.module';
+import { AddressModule } from './Address/Address.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { MailModule } from './Mail/Mail.module';
     }),
     UserModule,
     MailModule,
+    AddressModule
     
   ],
   providers:[

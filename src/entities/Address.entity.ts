@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToOne, JoinColumn } from 'typeorm';
 import { User } from './user.entity';
+import { Exclude } from 'class-transformer';
 
 @Entity('Addresses')
 export class Address {
@@ -20,5 +21,6 @@ export class Address {
 
   @OneToOne(() => User, (user) => user.address, { onDelete: 'CASCADE' })
   @JoinColumn()
+  @Exclude()
   user: User;
 }

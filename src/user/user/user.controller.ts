@@ -16,7 +16,6 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ChangeRoleDto } from './dto/New.role.dto';
 import { forgotPasswordDto } from './dto/Forgot.password.dto';
 import { verifyresetpassDto } from './dto/Verifyresespass.dto';
-import { UserRole } from 'src/Types/Enum.userrole';
 
 
 
@@ -100,12 +99,20 @@ export class UserController {
     return this.userService.changeAccountStatus(id, active);
   }
 
-  @Get(':id/Getdata')
   @UseGuards(JwtAuthGuard)
-  async getUser(@Param('id', ParseIntPipe) id: number,@Req() req,) 
-  {
-    return this.userService.getUserById(id, req.user);
+  @Get('/GetMyData')
+  async getOwnData(@Req() request: Request) {
+    const userId = request['user'].sub;
+    return this.userService.getUserById(userId);
   }
+
+  @UseGuards(AdminAuthGuard)
+  @Get(':id/GetUserData')
+  async getUserByAdmin(@Param('id', ParseIntPipe) userId: number) {
+    return this.userService.getUserById(userId);
+  }
+
+
 
   @UseGuards(JwtAuthGuard)
   @Get('logout')
@@ -129,15 +136,20 @@ export class UserController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':id/delete-account')
-  async deleteAccount(
-    @Req() request: Request,
-    @Param('id' ,ParseIntPipe) id:number
-  ) {
-    const userIdFromToken = request['user'].sub;
-    const userRole:UserRole = request['user'].role;
-    return this.userService.deleteAccount(userIdFromToken, userRole,id);
+  @Delete('delete-account')
+  async deleteAccount(@Req() request: Request) {
+    const userId = request['user'].sub;
+    return this.userService.deleteAccount(userId);
   }
+
+  @UseGuards(AdminAuthGuard)
+  @Delete('/:id/delete-account')
+  async deleteAccountbyAdmin(@Param('id', ParseIntPipe) userId: number) {
+    const result = await this.userService.deleteAccount(userId);
+    return { ...result, deletedBy: 'admin' };
+  }
+
+
 
   @UseGuards(JwtAuthGuard)
   @Put('edit-profile')
