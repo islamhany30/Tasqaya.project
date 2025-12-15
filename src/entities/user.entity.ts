@@ -1,8 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany } from 'typeorm';
 import { IsEmail, IsOptional, Matches } from 'class-validator';
 import { Address } from './Address.entity';
 import { Exclude } from 'class-transformer';
 import { UserRole } from 'src/Types/Enum.userrole';
+import { Review } from './Review.entity';
+import { Cart } from './Cart.entity';
 
 @Entity('Users')
 export class User {
@@ -43,6 +45,9 @@ export class User {
   @OneToOne(() => Address, (address) => address.user, { cascade: true })
   address?: Address;
 
+  @OneToMany(() => Cart, (carts) => carts.user, { cascade: true })
+  carts:Cart;
+
   @Column({
     type: 'enum',
     enum: UserRole,
@@ -71,4 +76,8 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   @Exclude()
   resetCodeExpiry?: Date | null;
+
+  @OneToMany(() => Review, (review) => review.user)
+  reviews: Review[];
+
 }

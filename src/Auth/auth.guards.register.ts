@@ -6,7 +6,7 @@ import { User } from 'src/entities/user.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class JwtRegisterAuthGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService,
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
@@ -39,11 +39,7 @@ export class JwtAuthGuard implements CanActivate {
       {
         throw new ForbiddenException("Your account is deactivated!")
       }
-      
-      if(user.isVerified === false)
-      {
-        throw new ForbiddenException("Your account is not verified!")
-      }
+ 
 
       return true;
     } catch (error) {

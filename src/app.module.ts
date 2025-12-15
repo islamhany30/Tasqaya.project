@@ -2,9 +2,16 @@ import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserModule } from './user/user/user.module';
+import { UserModule } from './AllMoudles/user/user/user.module';
 import { MailModule } from './Mail/Mail.module';
-import { AddressModule } from './Address/Address.module';
+import { AddressModule } from './AllMoudles/Address/Address.module';
+import { SupplierModule } from './AllMoudles/Supplier/Supplier.module';
+import { BrandModule } from './AllMoudles/Brand/Brand.module';
+import { CarModule } from './AllMoudles/Car/Car.module';
+import { CategoryModule } from './AllMoudles/Catigory/Category.module';
+import { ProductModule } from './AllMoudles/Products/Product.module';
+import { CartModule } from './AllMoudles/Cart/Cart.module';
+import { ReviewModule } from './AllMoudles/Review/Review.module';
 
 @Module({
   imports: [
@@ -28,8 +35,14 @@ import { AddressModule } from './Address/Address.module';
     }),
     UserModule,
     MailModule,
-    AddressModule
-    
+    AddressModule,
+    SupplierModule,
+    BrandModule,
+    CarModule,
+    CategoryModule,
+    ProductModule,
+    CartModule,
+    ReviewModule
   ],
   providers:[
     {

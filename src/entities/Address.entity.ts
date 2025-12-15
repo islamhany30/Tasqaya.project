@@ -19,8 +19,7 @@ export class Address {
   @Column({ nullable: true })
   long?: string;
 
-  @OneToOne(() => User, (user) => user.address, { onDelete: 'CASCADE' })
-  @JoinColumn()
-  @Exclude()
-  user: User;
+ @OneToOne(() => User, (user) => user.address, { onDelete: 'CASCADE' })
+ @JoinColumn({ name: 'userId' })
+ user: User;
 }

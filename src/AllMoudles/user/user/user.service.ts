@@ -55,11 +55,20 @@ export class UserService {
       text: `Your verification code is: ${verificationCode}`
     });
 
-    return { message: `User registered successfully. Verification code sent to email`,user };
+    const payload:Payload = {
+      sub: user.id,
+      firstName: user.firstName,
+      email: user.email,
+      role:user.userRole
+    };
+
+    const token = generateToken(this.jwtService, payload);
+
+    return { message: `User registered successfully. Verification code sent to email`, token };
   }
 
-  async verifyUser(dto: MailDTO): Promise<any> {
-    const user = await this.userRepository.findOne({ where: { email: dto.email } });
+  async verifyUser(dto: MailDTO,userId:number): Promise<any> {
+    const user = await this.userRepository.findOne({ where: { id:userId } });
 
     if (!user) {
       throw new BadRequestException('User not found');
@@ -89,7 +98,6 @@ export class UserService {
 
     return { message: 'User verified successfully' };
   }
-
 
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
@@ -303,8 +311,8 @@ export class UserService {
   };
   }
 
-   async resendVerification(email: string) {
-    const user = await this.userRepository.findOne({ where: { email } });
+   async resendVerification(userId:number) {
+    const user = await this.userRepository.findOne({ where: { id:userId } });
 
     if (!user) {
       throw new BadRequestException('No user found with this email');

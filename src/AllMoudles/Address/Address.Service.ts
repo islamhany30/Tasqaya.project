@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Address } from 'src/entities/Address.entity';
 import { AddAddressDto } from './dto/addAddress.dto';
-import { User } from '../entities/user.entity';
+import { User } from '../../entities/user.entity';
 import { UpdateAddressDto } from './dto/Update.address.dto';
 
 @Injectable()
@@ -29,9 +29,8 @@ export class AddressService {
 
    async updateAddress(userId: number, dto: UpdateAddressDto): Promise<Address> {
     const address = await this.addressRepo.findOne({
-      where: { user: { id: userId } },
-      relations: ['user'],
-    });
+      where: { user: { id: userId } }
+        });
 
     if (!address) {
       throw new NotFoundException('Address not found for this user');
@@ -70,7 +69,6 @@ export class AddressService {
     
     const address = await this.addressRepo.findOne({
       where: { user: { id: userId } },
-      relations: ['user'],
     });
 
     if (!address) {

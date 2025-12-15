@@ -4,6 +4,7 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { MailDTO } from 'src/Mail/dto/Mail.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from 'src/Auth/auth.guards';
+import {  JwtRegisterAuthGuard} from 'src/Auth/auth.guards.register';
 import { ChangePasswordDto } from './dto/Changepassword.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
@@ -29,14 +30,16 @@ export class UserController {
     return this.userService.register(dto);
   }
 
+  @UseGuards(JwtRegisterAuthGuard)
   @Post('/verify')
-  async verify(@Body() dto: MailDTO) {
-    return this.userService.verifyUser(dto);
+  async verify(@Body() dto: MailDTO,@Req() req) {
+    return this.userService.verifyUser(dto,req.user.sub);
   }
 
+  @UseGuards(JwtRegisterAuthGuard)
   @Post('/resend-verification')
-  async resendVerification(@Body('email') email: string) {
-    return this.userService.resendVerification(email);
+  async resendVerification(@Req() req) {
+    return this.userService.resendVerification(req.user.sub);
   }
 
 
@@ -76,11 +79,15 @@ export class UserController {
     }),
   )
   async uploadProfileImage(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() image: Express.Multer.File,
     @Req() req: any
   ) {
+    if (!image) {
+      throw new BadRequestException('Image file is required');
+    }
+
     const userId = req.user.id; 
-    const imagePath = file.path;
+    const imagePath = image.path;
 
     const updatedUser = await this.userService.updateProfileImage(userId, imagePath);
 
