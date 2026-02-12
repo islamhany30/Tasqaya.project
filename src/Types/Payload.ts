@@ -1,10 +1,9 @@
-import { UserRole } from "./Enum.userrole";
+import { UserRole } from 'src/Enums/User.role';
 
 export class Payload {
   sub: number;
-  firstName: string;
   email: string;
-  role:UserRole;
+  role: UserRole;  
 
   constructor(partial: Partial<Payload>) {
     Object.assign(this, partial);

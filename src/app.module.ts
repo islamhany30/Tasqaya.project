@@ -2,22 +2,32 @@ import { ClassSerializerInterceptor, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserModule } from './AllMoudles/user/user/user.module';
 import { MailModule } from './Mail/Mail.module';
-import { AddressModule } from './AllMoudles/Address/Address.module';
-import { SupplierModule } from './AllMoudles/Supplier/Supplier.module';
-import { BrandModule } from './AllMoudles/Brand/Brand.module';
-import { CarModule } from './AllMoudles/Car/Car.module';
-import { CategoryModule } from './AllMoudles/Catigory/Category.module';
-import { ProductModule } from './AllMoudles/Products/Product.module';
-import { CartModule } from './AllMoudles/Cart/Cart.module';
-import { ReviewModule } from './AllMoudles/Review/Review.module';
+import { CompanyModule } from './AllMoudles/Company/Company.module';
+import { Company } from './entities/Company';
+import { Admin } from './entities/Admin';
+import { Worker } from './entities/Worker';
+import { Task } from './entities/Task';
+import { CompanyFeedback } from './entities/CompanyFeedback';
+import { Supervisor } from './entities/Supervisor';
+import { TaskWorker } from './entities/TaskWorker';
+import { TaskWorkerType } from './entities/TaskWorkerType';
+import { TaskPreCheck } from './entities/TaskPreCheck';
+import { WorkerScoreHistory } from './entities/WorketScoreHistory';
+import { WorkerType } from './entities/WorkerType';
+import { JobPost } from './entities/JobPost';
+import { Evaluation } from './entities/Evaluation';
+import { Payment } from './entities/Payment';
+import { Attendance } from './entities/Attendance';
+import { Application } from './entities/Application';
+import { TaskSupervisor } from './entities/TaskSupervisor';
+import { WorkerLevel } from './entities/WorkerLevel';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath:".env.development"
+      envFilePath: ".env.development",
     }),
 
     TypeOrmModule.forRootAsync({
@@ -29,26 +39,39 @@ import { ReviewModule } from './AllMoudles/Review/Review.module';
         username: config.get<string>('DB_USER'),
         password: config.get<string>('DB_PASSWORD'),
         database: config.get<string>('DB_NAME'),
-        autoLoadEntities: true,
-        synchronize: false
+        entities: [
+           Admin,
+  Company,
+  Worker,
+  WorkerLevel,
+  WorkerType,
+  WorkerScoreHistory,
+  Task,
+  TaskWorker,
+  TaskWorkerType,
+  TaskSupervisor,
+  TaskPreCheck,
+  Supervisor,
+  CompanyFeedback,
+  JobPost,
+  Evaluation,
+  Payment,
+  Attendance,
+  Application,
+        ], // هنا استدعينا كل الـ Entities
+        synchronize: false,
+        logging: true,
       }),
     }),
-    UserModule,
+
+    CompanyModule,
     MailModule,
-    AddressModule,
-    SupplierModule,
-    BrandModule,
-    CarModule,
-    CategoryModule,
-    ProductModule,
-    CartModule,
-    ReviewModule
   ],
-  providers:[
+  providers: [
     {
-      provide:APP_INTERCEPTOR,
-      useClass:ClassSerializerInterceptor
-    }
-  ]
+      provide: APP_INTERCEPTOR,
+      useClass: ClassSerializerInterceptor,
+    },
+  ],
 })
 export class AppModule {}

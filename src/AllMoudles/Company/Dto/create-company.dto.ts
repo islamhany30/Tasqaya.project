@@ -1,0 +1,41 @@
+import { 
+  IsEmail, 
+  IsNotEmpty, 
+  IsString, 
+  Length 
+} from 'class-validator';
+import { Match } from '../../../Decorators/Match.decorator';
+
+export class CreateCompanyDto {
+
+  @IsNotEmpty()
+  @IsString()
+  @Length(3, 150)
+  name: string;
+
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Length(8, 255)
+  password: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Match('password', {
+    message: 'confirmPassword must match password'
+  })
+  confirmPassword: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Length(10, 20)
+  phone: string;
+
+  @IsNotEmpty()
+  @IsString()
+  @Length(5, 255)
+  address: string;
+}

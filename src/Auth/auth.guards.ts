@@ -1,15 +1,33 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { Request } from 'express';
-import { User } from 'src/entities/user.entity';
-import { Repository } from 'typeorm';
+import { UserRole } from '../Enums/User.role';
+import { Company } from '../entities/Company';
+import { Admin } from '../entities/Admin';
+import { Worker } from '../entities/Worker';
+import { Supervisor } from '../entities/Supervisor';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService,
-        @InjectRepository(User)
-        private readonly userRepository: Repository<User>,
+  // خريطة لربط الأدوار بالـ Entities المناسبة
+  private readonly entityMap = {
+    [UserRole.ADMIN]: Admin,
+    [UserRole.WORKER]: Worker,
+    [UserRole.SUPERVISOR]: Supervisor,
+    [UserRole.COMPANY]: Company,
+  };
+
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -23,30 +41,51 @@ export class JwtAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-
-        const payload = await this.jwtService.verifyAsync(token, {
+      // 1. فك تشفير التوكن والتحقق من صحته
+      const payload = await this.jwtService.verifyAsync(token, {
         secret: process.env.JWT_SECRET,
       });
 
-      request["user"] = payload;
-      const user = await this.userRepository.findOne({where:{id:request["user"].sub}});
-      if(!user)
-      {
-        throw new NotFoundException('User not found');
+      const { sub, role } = payload;
+
+      // 2. تحديد الـ Entity بناءً على الـ Role
+      const targetEntity = this.entityMap[role];
+      if (!targetEntity) {
+        throw new UnauthorizedException('Invalid role identified in token');
       }
 
-      if(user.active === false)
-      {
-        throw new ForbiddenException("Your account is deactivated!")
+      // 3. البحث في قاعدة البيانات بشكل ديناميكي عن طريق DataSource
+      const account = await this.dataSource
+        .getRepository(targetEntity)
+        .findOne({ where: { id: sub } });
+
+      if (!account) {
+        throw new NotFoundException('Account not found');
       }
+
+      // 4. الحفاظ على اللوجيك الخاص بك (التحقق من النشاط والتفعيل)
       
-      if(user.isVerified === false)
-      {
-        throw new ForbiddenException("Your account is not verified!")
+      // التعامل مع اختلاف مسمى حقل النشاط (active vs isActive)
+      const isActive = role === UserRole.COMPANY ? (account as any).isActive : (account as any).active;
+      if (isActive === false) {
+        throw new ForbiddenException('Your account is deactivated!');
       }
+
+      // التحقق من أن الحساب مفعل (isVerified)
+      // ملاحظة: افترضنا أن الحقل اسمه isVerified في كلا الـ Entities كما هو في الكود السابق
+      if ((account as any).isVerified === false) {
+        throw new ForbiddenException('Your account is not verified!');
+      }
+
+      // إرفاق البيانات بالطلب
+      request['user'] = payload;
 
       return true;
     } catch (error) {
+      // إعادة تمرير أخطاء الـ Forbidden والـ NotFound كما هي
+      if (error instanceof ForbiddenException || error instanceof NotFoundException) {
+        throw error;
+      }
       throw new UnauthorizedException('Invalid or expired token');
     }
   }
