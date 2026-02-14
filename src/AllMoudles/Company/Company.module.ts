@@ -27,5 +27,6 @@ import { CompanyFeedback } from 'src/entities/CompanyFeedback';
 ],
   controllers: [CompanyController],
   providers: [CompanyService],
+  exports:[CompanyService]
 })
 export class CompanyModule {}

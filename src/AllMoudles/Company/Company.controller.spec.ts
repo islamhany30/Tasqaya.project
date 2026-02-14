@@ -17,7 +17,7 @@ describe('CompanyController', () => {
     login: jest.fn(),
     changePassword: jest.fn(),
     updateProfileImage: jest.fn(),
-    changeAccountStatus: jest.fn(),
+    changeAccountStatus: jest.fn(), // سيبناها كـ Mock بس مش هناديها في الـ Controller Tests
     getCompanyById: jest.fn(),
     forgotPassword: jest.fn(),
     verifyResetCode: jest.fn(),
@@ -79,14 +79,8 @@ describe('CompanyController', () => {
   });
 
   it('uploadProfileImage() - error', async () => {
-    // تم الإصلاح هنا باستخدام as any
     await expect(controller.uploadProfileImage(null as any, { user: { sub: 1 } } as any))
       .rejects.toThrow(BadRequestException);
-  });
-
-  it('changeStatus()', async () => {
-    await controller.changeStatus(1, {} as any);
-    expect(service.changeAccountStatus).toHaveBeenCalled();
   });
 
   it('getOwnData()', async () => {
@@ -94,10 +88,8 @@ describe('CompanyController', () => {
     expect(service.getCompanyById).toHaveBeenCalled();
   });
 
-  it('getCompanyByAdmin()', async () => {
-    await controller.getCompanyByAdmin(1);
-    expect(service.getCompanyById).toHaveBeenCalled();
-  });
+  // تم حذف changeStatus() لأنها لم تعد موجودة في الـ CompanyController
+  // تم حذف getCompanyByAdmin() لأنها لم تعد موجودة في الـ CompanyController
 
   it('forgotPassword()', async () => {
     await controller.forgotPassword({} as any);

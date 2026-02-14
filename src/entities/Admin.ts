@@ -29,6 +29,12 @@ export class Admin {
   @Column({ length: 255, nullable: true })
   profileImage: string;
 
+  @Column({ length: 20 })
+  phone: string;
+
+  @Column({ length: 255, nullable: true })
+  address: string;
+  
   @Column({ default: false })
   isVerified: boolean;
 

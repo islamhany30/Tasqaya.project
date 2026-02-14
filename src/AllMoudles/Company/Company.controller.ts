@@ -1,24 +1,22 @@
 import { 
-  Controller, Get, Post, Body, Patch, Param, Delete, 
+  Controller, Get, Post, Body, Patch, Delete, 
   UseGuards, Req, Put, UseInterceptors, UploadedFile, 
-  ParseIntPipe, BadRequestException 
+  BadRequestException 
 } from '@nestjs/common';
 
 import { CompanyService } from './Company.service';
-import { CreateCompanyDto } from './Dto/create-company.dto'; // تم التعديل من CreateUserDto
+import { CreateCompanyDto } from './Dto/create-company.dto'; 
 import { MailDTO } from '../../Mail/dto/Mail.dto';
-import { LoginCompanyDto } from './Dto/login-company.dto'; // تم التعديل من LoginDto
+import { LoginCompanyDto } from './Dto/login-company.dto'; 
 import { JwtAuthGuard } from '../../Auth/auth.guards';
 import { JwtRegisterAuthGuard } from '../../Auth/auth.guards.register';
-import { ChangeCompanyPasswordDto } from './Dto/change-company-password.dto'; // تم التعديل
+import { ChangeCompanyPasswordDto } from './Dto/change-company-password.dto'; 
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
 import * as path from 'path';
-import { ChangeCompanyStatusDto } from './Dto/change-company-status.dto'; // تم التعديل
-import { AdminAuthGuard } from '../../Auth/Auth.roles';
-import { ResetCompanyPasswordDto } from './Dto/reset-company-password.dto'; // تم التعديل
-import { UpdateCompanyDto } from './Dto/update-company.dto'; // تم التعديل
+import { ResetCompanyPasswordDto } from './Dto/reset-company-password.dto'; 
+import { UpdateCompanyDto } from './Dto/update-company.dto'; 
 import { ForgotCompanyPasswordDto } from './Dto/forgot-company-password.dto';
 import { VerifyCompanyResetDto } from './Dto/verify-company-reset.dto';
 
@@ -26,6 +24,7 @@ import { VerifyCompanyResetDto } from './Dto/verify-company-reset.dto';
 export class CompanyController {
   constructor(private readonly companyService: CompanyService) {}
 
+  // 1. عمليات التسجيل والتفعيل
   @Post("/register")
   public registerCompany(@Body() dto: CreateCompanyDto) {
     return this.companyService.register(dto);
@@ -43,15 +42,31 @@ export class CompanyController {
     return this.companyService.resendVerification(req.user.sub);
   }
 
+  // 2. الدخول
   @Post('/login')
   login(@Body() loginDto: LoginCompanyDto) {
     return this.companyService.login(loginDto);
   }
 
+  // 3. إدارة الملف الشخصي (الشركة لنفسها)
+  @UseGuards(JwtAuthGuard)
+  @Get('/GetMyData')
+  async getOwnData(@Req() req) {
+    const companyId = req.user.sub;
+    return this.companyService.getCompanyById(companyId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('edit-profile')
+  async editProfile(@Req() req, @Body() updateDto: UpdateCompanyDto) {
+    const companyId = req.user.sub; 
+    return this.companyService.editProfile(companyId, updateDto);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch('/change-password')
   async changePassword(@Req() req, @Body() dto: ChangeCompanyPasswordDto) {
-    const companyId = req.user.sub; // توحيد استخدام sub بدل id ليتوافق مع الـ Payload
+    const companyId = req.user.sub; 
     return this.companyService.changePassword(companyId, dto);
   }
 
@@ -73,52 +88,17 @@ export class CompanyController {
         }
         callback(null, true);
       },
-      limits: {
-        fileSize: 4 * 1024 * 1024, 
-      }
+      limits: { fileSize: 4 * 1024 * 1024 }
     }),
   )
-  async uploadProfileImage(
-    @UploadedFile() image: Express.Multer.File,
-    @Req() req: any
-  ) {
-    if (!image) {
-      throw new BadRequestException('Image file is required');
-    }
-
+  async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req: any) {
+    if (!image) throw new BadRequestException('Image file is required');
     const companyId = req.user.sub; 
-    const imagePath = image.path;
-
-    const updatedCompany = await this.companyService.updateProfileImage(companyId, imagePath);
-
-    return {
-      message: 'Company profile image updated successfully!',
-      company: updatedCompany,
-    };
+    const updatedCompany = await this.companyService.updateProfileImage(companyId, image.path);
+    return { message: 'Company profile image updated successfully!', company: updatedCompany };
   }
 
-  @UseGuards(AdminAuthGuard)
-  @Patch(':id/status')
-  async changeStatus(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() statusDto: ChangeCompanyStatusDto,
-  ) {
-    return this.companyService.changeAccountStatus(id, statusDto);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Get('/GetMyData')
-  async getOwnData(@Req() req) {
-    const companyId = req.user.sub;
-    return this.companyService.getCompanyById(companyId);
-  }
-
-  @UseGuards(AdminAuthGuard)
-  @Get(':id/GetCompanyData')
-  async getCompanyByAdmin(@Param('id', ParseIntPipe) companyId: number) {
-    return this.companyService.getCompanyById(companyId);
-  }
-
+  // 4. استعادة كلمة المرور
   @Post('forgot-password')
   async forgotPassword(@Body() dto: ForgotCompanyPasswordDto) {
     return this.companyService.forgotPassword(dto);
@@ -134,17 +114,11 @@ export class CompanyController {
     return this.companyService.resetPassword(resetPasswordDto);
   }
 
+  // 5. الحساب
   @UseGuards(JwtAuthGuard)
   @Delete('delete-account')
   async deleteAccount(@Req() req) {
     const companyId = req.user.sub;
     return this.companyService.deleteAccount(companyId);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Put('edit-profile')
-  async editProfile(@Req() req, @Body() updateDto: UpdateCompanyDto) {
-    const companyId = req.user.sub; 
-    return this.companyService.editProfile(companyId, updateDto);
   }
 }
