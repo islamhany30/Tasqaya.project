@@ -55,16 +55,14 @@ export class JwtAuthGuard implements CanActivate {
       }
 
       // 3. البحث في قاعدة البيانات بشكل ديناميكي عن طريق DataSource
-      const account = await this.dataSource
-        .getRepository(targetEntity)
-        .findOne({ where: { id: sub } });
+      const account = await this.dataSource.getRepository(targetEntity).findOne({ where: { id: sub } });
 
       if (!account) {
         throw new NotFoundException('Account not found');
       }
 
       // 4. الحفاظ على اللوجيك الخاص بك (التحقق من النشاط والتفعيل)
-      
+
       // التعامل مع اختلاف مسمى حقل النشاط (active vs isActive)
       const isActive = role === UserRole.COMPANY ? (account as any).isActive : (account as any).active;
       if (isActive === false) {
@@ -78,7 +76,7 @@ export class JwtAuthGuard implements CanActivate {
       }
 
       // إرفاق البيانات بالطلب
-      request['user'] = payload;
+      request['user'] = payload; //sub and role
 
       return true;
     } catch (error) {

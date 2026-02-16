@@ -1,7 +1,13 @@
-import { Injectable, BadRequestException, UnauthorizedException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Admin } from '../../entities/Admin'; 
+import { Admin } from '../../entities/Admin';
 import * as bcrypt from 'bcryptjs';
 import { MailService } from '../../Mail/MailService';
 import { MailDTO } from '../../Mail/dto/Mail.dto';
@@ -13,7 +19,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 import { CreateAdminDto } from './Dto/CreateAdminDto';
-import { LoginAdminDto } from './Dto/LoginAdminDto'; 
+import { LoginAdminDto } from './Dto/LoginAdminDto';
 import { UpdateAdminDto } from './Dto/UpdateAdminDto';
 import { ChangeAdminPasswordDto } from './Dto/ChangeAdminPasswordDto';
 import { ResetAdminPasswordDto } from './Dto/ResetAdminPasswordDto';
@@ -30,19 +36,19 @@ export class AdminService {
     private readonly adminRepository: Repository<Admin>,
     private readonly mailService: MailService,
     private readonly jwtService: JwtService,
-    private readonly companyService: CompanyService
+    private readonly companyService: CompanyService,
   ) {}
 
   async register(dto: CreateAdminDto): Promise<any> {
     const exist = await this.adminRepository.findOne({ where: { email: dto.email } });
     if (exist) throw new BadRequestException('Admin email already registered');
 
-    const hashedPassword = await bcrypt.hash(dto.passwordHash, 10);
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
 
     // استبعاد confirmPassword قبل الحفظ في قاعدة البيانات
-    const { confirmPassword, ...adminData } = dto;
-    
+    const { confirmPassword, password, ...adminData } = dto;
+
     const admin = this.adminRepository.create({
       ...adminData,
       passwordHash: hashedPassword,
@@ -57,7 +63,7 @@ export class AdminService {
     await this.mailService.sendMail({
       to: admin.email,
       subject: 'Verify your Admin account',
-      text: `Your verification code is: ${verificationCode}`
+      text: `Your verification code is: ${verificationCode}`,
     });
 
     const payload: Payload = {
@@ -177,16 +183,16 @@ export class AdminService {
     await this.mailService.sendMail({
       to: admin.email,
       subject: 'Verify your admin account',
-      text: `Your new verification code is: ${newCode}`
+      text: `Your new verification code is: ${newCode}`,
     });
 
     return { message: 'A new verification code has been sent to your email' };
   }
 
   async getAdminById(id: number) {
-    const admin = await this.adminRepository.findOne({ 
-      where: { id }, 
-      relations: ['companies', 'workers', 'supervisors', 'jopposts'] 
+    const admin = await this.adminRepository.findOne({
+      where: { id },
+      relations: ['companies', 'workers', 'supervisors', 'jopposts'],
     });
     if (!admin) throw new NotFoundException('Admin not found');
     return admin;
@@ -218,17 +224,17 @@ export class AdminService {
     return { message: 'Reset code has been sent to your email.' };
   }
 
-  async verifyResetCode(dto:VerifyAdminResetDto) {
-    const admin = await this.adminRepository.findOne({ where: { email:dto.email } });
+  async verifyResetCode(dto: VerifyAdminResetDto) {
+    const admin = await this.adminRepository.findOne({ where: { email: dto.email } });
     if (!admin) throw new NotFoundException('No admin found with this email');
 
     if (admin.resetCode !== dto.code) {
       throw new BadRequestException('Invalid reset code.');
     }
-    
+
     // تأكد من عدم انتهاء الصلاحية أيضاً
     if (admin.resetCodeExpiry && admin.resetCodeExpiry < new Date()) {
-        throw new BadRequestException('Reset code has expired.');
+      throw new BadRequestException('Reset code has expired.');
     }
 
     return { message: 'Code verified successfully.' };
@@ -255,7 +261,6 @@ export class AdminService {
     return { message: 'Password reset successfully' };
   }
 
-
   async changeCompanyStatus(id: number, statusDto: ChangeCompanyStatusDto) {
     return this.companyService.changeAccountStatus(id, statusDto.isActive);
   }
@@ -264,7 +269,7 @@ export class AdminService {
     return this.companyService.getCompanyById(companyId);
   }
 
-    async getAllCompaniesForAdmin() {
+  async getAllCompaniesForAdmin() {
     return this.companyService.getAllCompanies();
   }
 }

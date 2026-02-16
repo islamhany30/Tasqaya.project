@@ -14,12 +14,12 @@ export class CreateAdminDto {
   @IsNotEmpty()
   @IsString()
   @Length(8, 255)
-  passwordHash: string; 
+  password: string;
 
   @IsNotEmpty()
   @IsString()
-  @Match('passwordHash', {
-    message: 'confirmPassword must match passwordHash'
+  @Match('password', {
+    message: 'confirmPassword must match password',
   })
   confirmPassword: string;
 

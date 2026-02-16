@@ -1,4 +1,10 @@
-import { Injectable, BadRequestException, UnauthorizedException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  UnauthorizedException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company } from '../../entities/Company';
@@ -11,8 +17,8 @@ import { LoginCompanyDto } from './Dto/login-company.dto';
 import { CreateCompanyDto } from './Dto/create-company.dto';
 import { ChangeCompanyPasswordDto } from './Dto/change-company-password.dto';
 import { UpdateCompanyDto } from './Dto/update-company.dto';
-import { ResetCompanyPasswordDto } from './Dto/reset-company-password.dto'; 
-import { ForgotCompanyPasswordDto } from './Dto/forgot-company-password.dto'; 
+import { ResetCompanyPasswordDto } from './Dto/reset-company-password.dto';
+import { ForgotCompanyPasswordDto } from './Dto/forgot-company-password.dto';
 import { Payload } from '../../Types/Payload';
 import { UserRole } from '../../Enums/User.role';
 import * as path from 'path';
@@ -29,7 +35,9 @@ export class CompanyService {
 
   // 1. التسجيل والتحقق
   async register(dto: CreateCompanyDto): Promise<any> {
-    const exist = await this.companyRepository.findOne({ where: { email: dto.email } });
+    const exist = await this.companyRepository.findOne({
+      where: { email: dto.email },
+    });
     if (exist) throw new BadRequestException('Email already registered');
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -39,7 +47,7 @@ export class CompanyService {
     company.password = hashedPassword;
     company.isVerified = false;
     company.isActive = true;
-    company.verificationCode = verificationCode;  
+    company.verificationCode = verificationCode;
     company.verificationCodeExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
     await this.companyRepository.save(company);
@@ -47,7 +55,7 @@ export class CompanyService {
     await this.mailService.sendMail({
       to: company.email,
       subject: 'Verify your company account',
-      text: `Your verification code is: ${verificationCode}`
+      text: `Your verification code is: ${verificationCode}`,
     });
 
     const payload: Payload = {
@@ -57,11 +65,16 @@ export class CompanyService {
     };
     const token = generateToken(this.jwtService, payload);
 
-    return { message: 'Company registered successfully. Verification code sent to email.', token };
+    return {
+      message: 'Company registered successfully. Verification code sent to email.',
+      token,
+    };
   }
 
   async verifyCompany(dto: MailDTO, companyId: number): Promise<any> {
-    const company = await this.companyRepository.findOne({ where: { id: companyId } });
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
     if (!company) throw new BadRequestException('Company not found');
     if (company.isVerified) throw new BadRequestException('Company already verified');
 
@@ -97,7 +110,11 @@ export class CompanyService {
     const isMatch = await bcrypt.compare(password, company.password);
     if (!isMatch) throw new UnauthorizedException('Invalid email or password');
 
-    const payload: Payload = { sub: company.id, email: company.email, role: UserRole.COMPANY };
+    const payload: Payload = {
+      sub: company.id,
+      email: company.email,
+      role: UserRole.COMPANY,
+    };
     const token = generateToken(this.jwtService, payload);
 
     return { message: 'Login successful', access_token: token };
@@ -105,7 +122,9 @@ export class CompanyService {
 
   // 3. إدارة الملف الشخصي والصور
   async updateProfileImage(companyId: number, newImagePath: string) {
-    const company = await this.companyRepository.findOne({ where: { id: companyId } });
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
     if (!company) throw new NotFoundException('Company not found');
 
     if (company.profileImage) {
@@ -129,7 +148,9 @@ export class CompanyService {
 
   // 4. إدارة كلمات المرور
   async changePassword(companyId: number, dto: ChangeCompanyPasswordDto) {
-    const company = await this.companyRepository.findOne({ where: { id: companyId } });
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
     if (!company) throw new NotFoundException('Company not found');
 
     const isMatch = await bcrypt.compare(dto.oldPassword, company.password);
@@ -141,7 +162,9 @@ export class CompanyService {
   }
 
   async forgotPassword(body: ForgotCompanyPasswordDto) {
-    const company = await this.companyRepository.findOne({ where: { email: body.email } });
+    const company = await this.companyRepository.findOne({
+      where: { email: body.email },
+    });
     if (!company) throw new NotFoundException('No company found with this email.');
 
     const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -152,7 +175,7 @@ export class CompanyService {
     await this.mailService.sendMail({
       to: company.email,
       subject: 'Reset Your Password',
-      text: `Your reset code is: ${resetCode}`
+      text: `Your reset code is: ${resetCode}`,
     });
     return { message: 'Reset code sent to email.' };
   }
@@ -164,7 +187,9 @@ export class CompanyService {
   }
 
   async resetPassword(dto: ResetCompanyPasswordDto): Promise<any> {
-    const company = await this.companyRepository.findOne({ where: { email: dto.email } });
+    const company = await this.companyRepository.findOne({
+      where: { email: dto.email },
+    });
     if (!company) throw new NotFoundException('Company not found');
 
     company.password = await bcrypt.hash(dto.newPassword, 10);
@@ -175,7 +200,10 @@ export class CompanyService {
   }
 
   async getCompanyById(id: number) {
-    const company = await this.companyRepository.findOne({ where: { id }, relations: ['tasks', 'feedback'] });
+    const company = await this.companyRepository.findOne({
+      where: { id },
+      relations: ['tasks', 'feedback'],
+    });
     if (!company) throw new NotFoundException('Company not found');
     return company;
   }
@@ -189,7 +217,9 @@ export class CompanyService {
   }
 
   async deleteAccount(companyId: number) {
-    const company = await this.companyRepository.findOne({ where: { id: companyId } });
+    const company = await this.companyRepository.findOne({
+      where: { id: companyId },
+    });
     if (!company) throw new NotFoundException('Company not found');
     await this.companyRepository.remove(company);
     return { message: 'Deleted successfully' };
@@ -204,11 +234,15 @@ export class CompanyService {
     company.verificationCodeExpiry = new Date(Date.now() + 5 * 60 * 1000);
     await this.companyRepository.save(company);
 
-    await this.mailService.sendMail({ to: company.email, subject: 'Verify Code', text: `Code: ${newCode}` });
+    await this.mailService.sendMail({
+      to: company.email,
+      subject: 'Verify Code',
+      text: `Code: ${newCode}`,
+    });
     return { message: 'New code sent' };
   }
 
-    async getAllCompanies(): Promise<Company[]> {
-    return this.companyRepository.find(); 
+  async getAllCompanies(): Promise<Company[]> {
+    return this.companyRepository.find();
   }
 }

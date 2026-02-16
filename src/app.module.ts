@@ -21,6 +21,7 @@ import { Application } from './entities/Application';
 import { TaskSupervisor } from './entities/TaskSupervisor';
 import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
+import { AdminModule } from './AllMoudles/Admin/Admin.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { WorkerPayout } from './entities/WorkerPayout';
       }),
     }),
 
+    AdminModule,
     CompanyModule,
     MailModule,
   ],
