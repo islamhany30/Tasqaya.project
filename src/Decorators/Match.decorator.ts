@@ -9,7 +9,7 @@ export function Match(property: string, validationOptions?: ValidationOptions) {
     registerDecorator({
       name: 'Match',
       target: object.constructor,
-      propertyName,           
+      propertyName,
       constraints: [property],
       options: validationOptions,
       validator: {
