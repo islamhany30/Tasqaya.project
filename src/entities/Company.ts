@@ -1,4 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+} from 'typeorm';
 import { Task } from './Task';
 import { CompanyFeedback } from './CompanyFeedback';
 import { Admin } from './Admin';
@@ -23,7 +31,7 @@ export class Company {
   @Column({ length: 255 })
   address: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   profileImage: string | null;
 
   @Column({ default: false })
@@ -32,28 +40,31 @@ export class Company {
   @Column({ default: true })
   isActive: boolean;
 
-  @Column({ type: 'varchar',nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   verificationCode?: string | null;
 
   @Column({ nullable: true, type: 'timestamp' })
   verificationCodeExpiry?: Date | null;
 
-  @Column({ type: 'varchar',nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   resetCode: string | null;
 
   @Column({ nullable: true, type: 'timestamp' })
-  resetCodeExpiry: Date |null; 
+  resetCodeExpiry: Date | null;
 
-  @ManyToOne(() => Admin, admin => admin.companies, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => Admin, (admin) => admin.companies, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'adminId' })
   adminId: Admin;
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @OneToMany(() => Task, t => t.company, { onDelete: 'CASCADE' })
+  @OneToMany(() => Task, (t) => t.company, { onDelete: 'CASCADE' })
   tasks: Task[];
 
-  @OneToMany(() => CompanyFeedback, f => f.companyId, { onDelete: 'CASCADE' })
+  @OneToMany(() => CompanyFeedback, (f) => f.companyId, { onDelete: 'CASCADE' })
   feedback: CompanyFeedback[];
 }

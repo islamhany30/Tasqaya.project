@@ -14,11 +14,11 @@ export class WorkerPayout {
   @PrimaryGeneratedColumn()
   workerPayoutID: number;
 
-  @ManyToOne(() => Worker, w => w.payouts, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Worker, (w) => w.payouts, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workerId' })
   workerId: Worker;
 
-  @ManyToOne(() => Task, t => t.payments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Task, (t) => t.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
   taskId: Task;
 

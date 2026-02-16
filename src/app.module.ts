@@ -12,16 +12,17 @@ import { CompanyFeedback } from './entities/CompanyFeedback';
 import { Supervisor } from './entities/Supervisor';
 import { TaskWorker } from './entities/TaskWorker';
 import { TaskWorkerType } from './entities/TaskWorkerType';
-import { TaskPreCheck } from './entities/TaskPreCheck';
-import { WorkerScoreHistory } from './entities/WorketScoreHistory';
+
+import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
 import { WorkerType } from './entities/WorkerType';
 import { JobPost } from './entities/JobPost';
-import { Evaluation } from './entities/Evaluation';
+
 import { Payment } from './entities/Payment';
 import { Attendance } from './entities/Attendance';
 import { Application } from './entities/Application';
 import { TaskSupervisor } from './entities/TaskSupervisor';
 import { WorkerLevel } from './entities/WorkerLevel';
+import { WorkerPayout } from './entities/WorkerPayout';
 
 @Module({
   imports: [
@@ -50,16 +51,15 @@ import { WorkerLevel } from './entities/WorkerLevel';
           TaskWorker,
           TaskWorkerType,
           TaskSupervisor,
-          TaskPreCheck,
           Supervisor,
           CompanyFeedback,
           JobPost,
-          Evaluation,
           Payment,
           Attendance,
           Application,
+          WorkerPayout,
         ], // هنا استدعينا كل الـ Entities
-        synchronize: false,
+        synchronize: true,
         logging: true,
       }),
     }),
