@@ -31,7 +31,7 @@ export class Company {
   @Column({ length: 255 })
   address: string;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ nullable: true,type:"varchar" })
   profileImage: string | null;
 
   @Column({ default: false })

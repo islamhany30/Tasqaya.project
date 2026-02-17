@@ -12,11 +12,9 @@ import { CompanyFeedback } from './entities/CompanyFeedback';
 import { Supervisor } from './entities/Supervisor';
 import { TaskWorker } from './entities/TaskWorker';
 import { TaskWorkerType } from './entities/TaskWorkerType';
-
 import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
 import { WorkerType } from './entities/WorkerType';
 import { JobPost } from './entities/JobPost';
-
 import { Payment } from './entities/Payment';
 import { Attendance } from './entities/Attendance';
 import { Application } from './entities/Application';
@@ -58,8 +56,8 @@ import { WorkerPayout } from './entities/WorkerPayout';
           Attendance,
           Application,
           WorkerPayout,
-        ], // هنا استدعينا كل الـ Entities
-        synchronize: true,
+        ],
+        synchronize: false, // خليها false عشان تستخدم migrations
         logging: true,
       }),
     }),
