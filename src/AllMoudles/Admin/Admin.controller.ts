@@ -62,11 +62,11 @@ export class AdminController {
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
-        destination: path.join(process.cwd(), 'Uploads', 'Admin-Profile'), // تغيير مسار الحفظ
+        destination: path.join(process.cwd(), 'Uploads', 'Admin-Profile'), 
         filename: (req, file, callback) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
-          callback(null, `admin-${uniqueSuffix}${ext}`); // مسمى الملف يبدأ بـ admin
+          callback(null, `admin-${uniqueSuffix}${ext}`);
         },
       }),
       fileFilter: (req, file, callback) => {

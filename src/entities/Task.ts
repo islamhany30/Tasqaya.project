@@ -3,14 +3,14 @@ import { Company } from './Company';
 import { WorkerLevel } from './WorkerLevel';
 import { JobPost } from './JobPost';
 import { TaskWorker } from './TaskWorker';
-import { TaskPreCheck } from './TaskPreCheck';
 import { Attendance } from './Attendance';
-import { Evaluation } from './Evaluation';
 import { TaskSupervisor } from './TaskSupervisor';
 import { Payment } from './Payment';
 import { CompanyFeedback } from './CompanyFeedback';
 import { TaskWorkerType } from './TaskWorkerType';
 import { TaskApprovalStatusEnum } from '../Enums/task-approval.enum';
+import { TaskStatusEnum } from 'src/Enums/task-status.enum';
+import { WorkerPayout } from './WorkerPayout';
 
 @Entity('tasks')
 export class Task {
@@ -43,8 +43,6 @@ export class Task {
   @JoinColumn({ name: 'workerLevelId' })
   workerLevel: WorkerLevel;
 
-  @Column({ default: false })
-  isUrgent: boolean;
 
   @Column('decimal', { precision: 10, scale: 2 })
   baseWorkersCost: number;
@@ -70,6 +68,14 @@ export class Task {
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
+  @Column({
+  type: 'enum',
+  enum: TaskStatusEnum,
+  default: TaskStatusEnum.PENDING,
+  })
+  status: TaskStatusEnum;
+
+
   @OneToMany(() => TaskWorkerType, twt => twt.taskId, { cascade: true })
   workerTypes: TaskWorkerType[];
 
@@ -79,14 +85,9 @@ export class Task {
   @OneToMany(() => TaskWorker, tw => tw.taskId, { cascade: true })
   taskWorkers: TaskWorker[];
 
-  @OneToMany(() => TaskPreCheck, pc => pc.taskId, { cascade: true })
-  preChecks: TaskPreCheck[];
 
   @OneToMany(() => Attendance, a => a.task, { cascade: true })
   attendance: Attendance[];
-
-  @OneToMany(() => Evaluation, e => e.taskId, { cascade: true })
-  evaluations: Evaluation[];
 
   @OneToMany(() => TaskSupervisor, ts => ts.taskId, { cascade: true })
   supervisors: TaskSupervisor[];
@@ -96,4 +97,8 @@ export class Task {
 
   @OneToMany(() => CompanyFeedback, f => f.taskId, { cascade: true })
   feedback: CompanyFeedback[];
+
+  @OneToMany(() => WorkerPayout, wp => wp.taskId)
+  workerPayouts: WorkerPayout[];
+
 }

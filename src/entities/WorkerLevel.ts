@@ -25,6 +25,12 @@ workerHourlyRate: number;
 companyHourlyRate: number;
 
 
+@Column({ nullable: true })
+minScore: number;
+
+@Column({ nullable: true })
+maxScore: number;
+
 @OneToMany(() => Worker, w => w.level, { onDelete: 'RESTRICT' })
 workers: Worker[];
 

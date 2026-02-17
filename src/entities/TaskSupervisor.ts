@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Column } from 'typeorm';
 import { Task } from './Task';
 import { Supervisor } from './Supervisor';
 
@@ -7,6 +7,18 @@ export class TaskSupervisor {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({
+  type: 'decimal',
+  precision: 10,
+  scale: 2,
+  transformer: {
+    to: (value: number) => value,
+    from: (value: string) => parseFloat(value),
+  },
+  })
+  supervisorBonus: number;
+
+
   @ManyToOne(() => Task, t => t.supervisors, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
   taskId: Task;
@@ -14,4 +26,6 @@ export class TaskSupervisor {
   @ManyToOne(() => Supervisor, s => s.taskAssignments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'supervisorId' })
   supervisorId: Supervisor;
+
+  
 }

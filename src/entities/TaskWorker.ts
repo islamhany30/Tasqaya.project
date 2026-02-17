@@ -24,4 +24,5 @@ export class TaskWorker {
 
   @Column({ nullable: true })
   backupOrder: number;
+
 }

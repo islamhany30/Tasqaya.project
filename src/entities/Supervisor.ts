@@ -1,6 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { TaskSupervisor } from './TaskSupervisor';
-import { Evaluation } from './Evaluation';
 import { Admin } from './Admin';
 
 @Entity('supervisors')
@@ -20,14 +19,26 @@ export class Supervisor {
   @Column({ length: 255 })
   password: string;
 
-  @Column({ length: 255, nullable: true })
+  @Column({ length: 255})
   profileImage: string;
 
   @Column({ type: 'date' })
   joinDate: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ type: 'date'})
   exitDate: Date;
+
+  @Column({
+  type: 'decimal',
+  precision: 10,
+  scale: 2,
+  transformer: {
+    to: (value: number) => value,
+    from: (value: string) => parseFloat(value),
+  },
+  })
+  salary: number;
+
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
@@ -57,6 +68,4 @@ export class Supervisor {
   @OneToMany(() => TaskSupervisor, ts => ts.supervisorId, { onDelete: 'CASCADE' })
   taskAssignments: TaskSupervisor[];
 
-  @OneToMany(() => Evaluation, e => e.supervisorId, { onDelete: 'SET NULL' })
-  evaluations: Evaluation[];
 }

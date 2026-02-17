@@ -3,9 +3,9 @@ import { WorkerLevel } from './WorkerLevel';
 import { Application } from './Application';
 import { TaskWorker } from './TaskWorker';
 import { Attendance } from './Attendance';
-import { Evaluation } from './Evaluation';
 import { WorkerScoreHistory } from './WorketScoreHistory';
 import { Admin } from './Admin';
+import { WorkerPayout } from './WorkerPayout';
 
 
 
@@ -45,6 +45,18 @@ score: number;
 
 @Column({ length: 255, nullable: true })
 profileImage: string;
+
+@Column({ default: 0 })
+completedTasks: number;
+
+@Column({ default: false })
+hasLanguage: boolean;
+
+@Column({ length: 50, nullable: true })
+language: string;
+
+@Column({ length: 255, nullable: true })
+languageVideoUrl: string;
 
 @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
 createdAt: Date;
@@ -86,16 +98,15 @@ taskWorkers: TaskWorker[];
 attendance: Attendance[];
 
 
-@OneToMany(() => Evaluation, e => e.workerId, { onDelete: 'CASCADE' })
-evaluations: Evaluation[];
-
-
 @OneToMany(() => WorkerScoreHistory, h => h.workerId, { onDelete: 'CASCADE' })
 scoreHistory: WorkerScoreHistory[];
 
 @ManyToOne(() => Admin, admin => admin.workers, { nullable: true, onDelete: 'SET NULL' })
 @JoinColumn({ name: 'adminId' })
 adminId: Admin;
+
+@OneToMany(() => WorkerPayout, wp => wp.workerId)
+payouts: WorkerPayout[];
 
 
 
