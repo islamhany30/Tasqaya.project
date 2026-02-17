@@ -85,7 +85,6 @@ export class Task {
   @OneToMany(() => TaskWorker, tw => tw.taskId, { cascade: true })
   taskWorkers: TaskWorker[];
 
-
   @OneToMany(() => Attendance, a => a.task, { cascade: true })
   attendance: Attendance[];
 
