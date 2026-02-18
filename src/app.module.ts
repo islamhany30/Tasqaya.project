@@ -22,6 +22,7 @@ import { TaskSupervisor } from './entities/TaskSupervisor';
 import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
 import { AdminModule } from './AllMoudles/Admin/Admin.module';
+import { ConfirmationToken } from './entities/confirmationToken';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { AdminModule } from './AllMoudles/Admin/Admin.module';
           Attendance,
           Application,
           WorkerPayout,
+          ConfirmationToken
         ],
         synchronize: false, // خليها false عشان تستخدم migrations
         logging: true,

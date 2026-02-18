@@ -13,6 +13,7 @@ import { Attendance } from './Attendance';
 import { WorkerScoreHistory } from './WorkerScoreHistory';
 import { Admin } from './Admin';
 import { WorkerPayout } from './WorkerPayout';
+import { ConfirmationToken } from './confirmationToken';
 
 @Entity('workers')
 export class Worker {
@@ -103,4 +104,9 @@ export class Worker {
 
   @OneToMany(() => WorkerPayout, (wp) => wp.workerId)
   payouts: WorkerPayout[];
+
+  @OneToMany(() => ConfirmationToken, (token) => token.Worker)
+  ConfirmationTokens: ConfirmationToken[];
+
+
 }

@@ -9,8 +9,9 @@ import { Payment } from './Payment';
 import { CompanyFeedback } from './CompanyFeedback';
 import { TaskWorkerType } from './TaskWorkerType';
 import { TaskApprovalStatusEnum } from '../Enums/task-approval.enum';
-import { TaskStatusEnum } from 'src/Enums/task-status.enum';
+import { TaskStatusEnum } from '../Enums/task-status.enum';
 import { WorkerPayout } from './WorkerPayout';
+import { ConfirmationToken } from './confirmationToken';
 
 @Entity('tasks')
 export class Task {
@@ -99,5 +100,8 @@ export class Task {
 
   @OneToMany(() => WorkerPayout, wp => wp.taskId)
   workerPayouts: WorkerPayout[];
+
+  @OneToMany(() => ConfirmationToken, (token) => token.Task)
+  ConfirmationTokens: ConfirmationToken[];
 
 }

@@ -1,14 +1,14 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { MailModule } from 'src/Mail/Mail.module';
+import { MailModule } from '../../Mail/Mail.module';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import {  ConfigService } from '@nestjs/config';
-import { Company } from 'src/entities/Company';
+import { Company } from '../../entities/Company';
 import { CompanyController } from './Company.controller';
 import { CompanyService } from './Company.service';
-import { Admin } from 'src/entities/Admin';
-import { Task } from 'src/entities/Task';
-import { CompanyFeedback } from 'src/entities/CompanyFeedback';
+import { Admin } from '../../entities/Admin';
+import { Task } from '../../entities/Task';
+import { CompanyFeedback } from '../../entities/CompanyFeedback';
 
 @Module({
   imports: [MailModule,TypeOrmModule.forFeature([Company,Admin,Task,CompanyFeedback]),
