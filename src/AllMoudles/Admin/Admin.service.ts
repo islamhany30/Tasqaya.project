@@ -86,7 +86,7 @@ export class AdminService {
       throw new BadRequestException('No verification code found. Please request a new one.');
     }
 
-    if (admin.verificationCode !== dto.VERFICATIONCODE) {
+    if (admin.verificationCode !== dto.VERIFICATIONCODE) {
       throw new BadRequestException('Invalid verification code');
     }
 

@@ -52,15 +52,13 @@ export class JwtRegisterAuthGuard implements CanActivate {
         throw new UnauthorizedException('Invalid role identified in token');
       }
 
-      const account = await this.dataSource
-        .getRepository(targetEntity)
-        .findOne({ where: { id: sub } });
+      const account = await this.dataSource.getRepository(targetEntity).findOne({ where: { id: sub } });
 
       if (!account) {
         throw new NotFoundException('Account not found');
       }
 
-      const isActive = role === UserRole.COMPANY ? (account as any).isActive : (account as any).active;
+      const isActive = (account as any).isActive ?? (account as any).active;
 
       if (isActive === false) {
         throw new ForbiddenException('Your account is deactivated!');

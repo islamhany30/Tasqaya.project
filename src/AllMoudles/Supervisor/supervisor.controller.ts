@@ -20,6 +20,8 @@ import { JwtRegisterAuthGuard } from '../../Auth/auth.guards.register';
 import { SupervisorService } from './supervisor.service';
 import { CreateSupervisorDto } from './Dto/create-supervisor.dto';
 import { LoginSupervisorDto } from './Dto/login-supervisor.dto';
+import { ForgotSupervisorPasswordDto } from './Dto/forgot-password.dto';
+import { ResetSupervisorPasswordDto } from './Dto/reset-supervisor-password.dto';
 
 @Controller('api/supervisor')
 export class SupervisorController {
@@ -33,11 +35,28 @@ export class SupervisorController {
   @UseGuards(JwtRegisterAuthGuard)
   @Post('verify')
   async verifySupervisor(@Body() dto: MailDTO, @Req() req) {
-    return this.supervisorService.verifySupervisor(dto, req.sub.id);
+    return this.supervisorService.verifySupervisor(dto, req.user.sub);
   }
 
   @Post('login')
   async login(@Body() dto: LoginSupervisorDto) {
     return this.supervisorService.login(dto);
+  }
+
+  @UseGuards(JwtRegisterAuthGuard)
+  @Post('resend-verification')
+  async resendVerification(@Req() req) {
+    return this.supervisorService.resendVerification(req.user.sub);
+  }
+
+  @UseGuards(JwtRegisterAuthGuard)
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotSupervisorPasswordDto) {
+    return this.supervisorService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Body() dto: ResetSupervisorPasswordDto) {
+    return this.supervisorService.resetPassword(dto);
   }
 }

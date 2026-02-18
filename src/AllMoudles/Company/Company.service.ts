@@ -86,7 +86,7 @@ export class CompanyService {
       throw new BadRequestException('Verification code expired.');
     }
 
-    if (company.verificationCode !== dto.VERFICATIONCODE) {
+    if (company.verificationCode !== dto.VERIFICATIONCODE) {
       throw new BadRequestException('Invalid verification code');
     }
 
