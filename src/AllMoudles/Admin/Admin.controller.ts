@@ -45,30 +45,30 @@ export class AdminController {
   }
 
   @UseGuards(JwtRegisterAuthGuard)
-  @Post('/verify')
+  @Post('verify')
   async verify(@Body() dto: MailDTO, @Req() req) {
     return this.adminService.verifyAdmin(dto, req.user.sub);
   }
 
   @UseGuards(JwtRegisterAuthGuard)
-  @Post('/resend-verification')
+  @Post('resend-verification')
   async resendVerification(@Req() req) {
     return this.adminService.resendVerification(req.user.sub);
   }
 
-  @Post('/login')
+  @Post('login')
   login(@Body() loginDto: LoginAdminDto) {
     return this.adminService.login(loginDto);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Patch('/change-password')
+  @Patch('change-password')
   async changePassword(@Req() req, @Body() dto: ChangeAdminPasswordDto) {
     const adminId = req.user.sub;
     return this.adminService.changePassword(adminId, dto);
   }
 
-  @Put('/profile-image')
+  @Put('profile-image')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('image', {
@@ -108,7 +108,7 @@ export class AdminController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('/GetMyData')
+  @Get('GetMyData')
   async getOwnData(@Req() req) {
     const adminId = req.user.sub;
     return this.adminService.getAdminById(adminId);

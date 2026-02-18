@@ -23,6 +23,7 @@ import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
 import { AdminModule } from './AllMoudles/Admin/Admin.module';
 import { ConfirmationToken } from './entities/confirmationToken';
+import { SupervisorModule } from './AllMoudles/Supervisor/supervisor.module';
 
 @Module({
   imports: [
@@ -58,15 +59,16 @@ import { ConfirmationToken } from './entities/confirmationToken';
           Attendance,
           Application,
           WorkerPayout,
-          ConfirmationToken
+          ConfirmationToken,
         ],
-        synchronize: false, // خليها false عشان تستخدم migrations
+        synchronize: true, // خليها false عشان تستخدم migrations
         logging: true,
       }),
     }),
 
     AdminModule,
     CompanyModule,
+    SupervisorModule,
     MailModule,
   ],
   providers: [

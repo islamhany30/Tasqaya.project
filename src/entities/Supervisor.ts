@@ -19,26 +19,26 @@ export class Supervisor {
   @Column({ length: 255 })
   password: string;
 
-  @Column({ length: 255})
+  @Column({ type: 'varchar', nullable: true, default: '' })
   profileImage: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   joinDate: Date;
 
-  @Column({ type: 'date'})
-  exitDate: Date;
+  @Column({ type: 'date', nullable: true })
+  exitDate: Date | null;
 
   @Column({
-  type: 'decimal',
-  precision: 10,
-  scale: 2,
-  transformer: {
-    to: (value: number) => value,
-    from: (value: string) => parseFloat(value),
-  },
+    type: 'decimal',
+    precision: 10,
+    scale: 2,
+    default: 0,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
   })
   salary: number;
-
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
@@ -55,17 +55,16 @@ export class Supervisor {
   @Column({ nullable: true, type: 'timestamp' })
   verificationCodeExpiry?: Date | null;
 
-  @Column({type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   resetCode: string | null;
 
   @Column({ nullable: true, type: 'timestamp' })
-  resetCodeExpiry: Date |null; 
-  
-  @ManyToOne(() => Admin, admin => admin.workers, { nullable: true, onDelete: 'SET NULL' })
+  resetCodeExpiry: Date | null;
+
+  @ManyToOne(() => Admin, (admin) => admin.workers, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'adminId' })
   adminId: Admin;
 
-  @OneToMany(() => TaskSupervisor, ts => ts.supervisorId, { onDelete: 'CASCADE' })
+  @OneToMany(() => TaskSupervisor, (ts) => ts.supervisorId, { onDelete: 'CASCADE' })
   taskAssignments: TaskSupervisor[];
-
 }
