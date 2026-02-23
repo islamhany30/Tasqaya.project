@@ -59,4 +59,10 @@ export class SupervisorController {
   async resetPassword(@Body() dto: ResetSupervisorPasswordDto) {
     return this.supervisorService.resetPassword(dto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('change-account-status')
+  async changeAccountStatus(@Req() req) {
+    return this.supervisorService.changeAccountStatus(req.user.sub);
+  }
 }

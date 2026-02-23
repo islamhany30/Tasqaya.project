@@ -1,6 +1,8 @@
+// src/Auth/dto/ForgotPasswordDto.ts
+
 import { IsEmail, IsNotEmpty } from 'class-validator';
 
-export class ForgotAdminPasswordDto {
+export class ForgotPasswordDto {
   @IsNotEmpty()
   @IsEmail()
   email: string;

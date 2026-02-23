@@ -1,10 +1,12 @@
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
-import { Match } from '../../../Decorators/Match.decorator';
+// src/Auth/dto/ChangePasswordDto.ts
 
-export class ResetAdminPasswordDto {
+import { IsNotEmpty, IsString, Length } from 'class-validator';
+import { Match } from '../../Decorators/Match.decorator';
+
+export class ChangePasswordDto {
   @IsNotEmpty()
-  @IsEmail()
-  email: string;
+  @IsString()
+  oldPassword: string;
 
   @IsNotEmpty()
   @IsString()

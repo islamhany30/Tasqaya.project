@@ -18,7 +18,7 @@ import { ConfigService } from '@nestjs/config';
           },
         },
         defaults: {
-          from: '"Autofusion" <autofusion169@gmail.com>',
+          from: '"Tasqaya" <tasqaya585@gmail.com>',
         },
       }),
     }),

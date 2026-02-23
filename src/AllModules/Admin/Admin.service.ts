@@ -1,0 +1,118 @@
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Admin } from '../../entities/Admin';
+import { AuthService } from '../../Auth/Auth.service';
+import { IAuthUser } from '../../Auth/interfaces/IAuthUser.interface';
+import { UserRole } from '../../Enums/User.role';
+import { CompanyService } from '../Company/Company.service';
+import { MailService } from '../../Mail/MailService';
+import { ChangeCompanyStatusDto } from '../Company/Dto/change-company-status.dto';
+import { CreateAdminDto } from './Dto/CreateAdminDto';
+import { UpdateAdminDto } from './Dto/UpdateAdminDto';
+import * as path from 'path';
+import * as fs from 'fs';
+import { privateDecrypt } from 'crypto';
+import { PassThrough } from 'stream';
+
+@Injectable()
+export class AdminService implements IAuthUser {
+  constructor(
+    @InjectRepository(Admin)
+    private readonly adminRepository: Repository<Admin>,
+    private readonly authService: AuthService,
+    private readonly companyService: CompanyService,
+  ) {}
+
+  //IAuthUser Implementation (called by AuthService)
+  async findByEmail(email: string): Promise<any> {
+    return this.adminRepository.findOne({ where: { email } });
+  }
+
+  async findById(id: number): Promise<any> {
+    return this.adminRepository.findOne({ where: { id } });
+  }
+
+  async validatePassword(plainText: string, user: Admin): Promise<boolean> {
+    const bcrypt = await import('bcryptjs');
+    return bcrypt.compare(plainText, user.passwordHash);
+  }
+
+  async createUser(data: Partial<Admin>): Promise<any> {
+    const admin = this.adminRepository.create(data);
+    return await this.adminRepository.save(admin);
+  }
+
+  async verifyUser(userId: number): Promise<void> {
+    await this.adminRepository.update(userId, {
+      isVerified: true,
+      verificationCode: null,
+      verificationCodeExpiry: null,
+    });
+  }
+
+  async setVerificationCode(userId: number, code: string, expiry: Date): Promise<void> {
+    await this.adminRepository.update(userId, {
+      verificationCode: code,
+      verificationCodeExpiry: expiry,
+    });
+  }
+
+  async setResetCode(email: string, code: string, expiry: Date): Promise<void> {
+    await this.adminRepository.update(
+      { email },
+      {
+        resetCode: code,
+        resetCodeExpiry: expiry,
+      },
+    );
+  }
+
+  async updatePassword(userId: number, hashedPassword: string): Promise<void> {
+    await this.adminRepository.update(userId, {
+      passwordHash: hashedPassword,
+    });
+  }
+
+  async clearResetCode(userId: number): Promise<void> {
+    await this.adminRepository.update(userId, {
+      resetCode: null,
+      resetCodeExpiry: null,
+    });
+  }
+
+  //Delegations -> These will be called by the admin controller
+  //Pass this as the userService
+  async register(dto: CreateAdminDto) {
+    const { confirmPassword, ...rest } = dto;
+    return this.authService.register(rest, 'Verify your admin account', this, UserRole.ADMIN);
+  }
+
+  async verifyAdmin(code: string, adminId: number) {
+    return this.authService.verifyUser(code, adminId, this);
+  }
+
+  async resendVerification(adminId: number) {
+    return this.authService.resendVerification(adminId, this);
+  }
+
+  async login(dto: { email: string; password: string }) {
+    return this.authService.login(dto.email, dto.password, this, UserRole.ADMIN);
+  }
+
+  async changePassword(adminId: number, dto: { oldPassword: string; newPassword: string }) {
+    return this.authService.changePassword(adminId, dto.oldPassword, dto.newPassword, this);
+  }
+
+  async forgotPassword(dto: { email: string }) {
+    return this.authService.forgotPassword(dto.email, this);
+  }
+
+  async verifyResetCode(dto: { email: string; code: string }) {
+    return this.authService.verifyResetCode(dto.email, dto.code, this);
+  }
+
+  async resetPassword(dto: { email: string; newPassword: string }) {
+    return this.authService.resetPassword(dto.email, dto.newPassword, this);
+  }
+}

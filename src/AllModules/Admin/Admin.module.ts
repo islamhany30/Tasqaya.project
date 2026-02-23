@@ -9,20 +9,22 @@ import { Company } from '../../entities/Company'; // هنحتاجها للـ Inj
 import { AdminController } from './Admin.controller';
 import { AdminService } from './Admin.service';
 import { CompanyModule } from '../Company/Company.module'; // عشان نقدر نستخدم الـ CompanyService
+import { AuthModule } from 'src/Auth/Auth.module';
 
 @Module({
   imports: [
+    AuthModule,
     MailModule,
-    CompanyModule, 
+    CompanyModule,
     TypeOrmModule.forFeature([Admin, Company]),
     JwtModule.registerAsync({
       inject: [ConfigService],
-      global: true, 
+      global: true,
       useFactory: async (config: ConfigService): Promise<JwtModuleOptions> => {
         return {
           secret: config.get<string>('JWT_SECRET'),
           signOptions: {
-            expiresIn: config.get<number>('JWT_EXPIRES_IN'), 
+            expiresIn: config.get<number>('JWT_EXPIRES_IN'),
           },
         };
       },

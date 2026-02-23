@@ -3,7 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailModule } from './Mail/Mail.module';
-import { CompanyModule } from './AllMoudles/Company/Company.module';
+import { CompanyModule } from './AllModules/Company/Company.module';
 import { Company } from './entities/Company';
 import { Admin } from './entities/Admin';
 import { Worker } from './entities/Worker';
@@ -21,9 +21,9 @@ import { Application } from './entities/Application';
 import { TaskSupervisor } from './entities/TaskSupervisor';
 import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
-import { AdminModule } from './AllMoudles/Admin/Admin.module';
+import { AdminModule } from './AllModules/Admin/Admin.module';
 import { ConfirmationToken } from './entities/confirmationToken';
-import { SupervisorModule } from './AllMoudles/Supervisor/supervisor.module';
+import { SupervisorModule } from './AllModules/Supervisor/supervisor.module';
 
 @Module({
   imports: [

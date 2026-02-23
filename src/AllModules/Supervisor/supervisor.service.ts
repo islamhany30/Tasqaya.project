@@ -87,7 +87,7 @@ export class SupervisorService {
 
     await this.supervisorRepository.save(supervisor);
 
-    return { status: 'success', message: 'Company verified successfully' };
+    return { status: 'success', message: 'Supervisor verified successfully' };
   }
 
   async resendVerification(sueprvisorId: number): Promise<any> {
@@ -183,6 +183,21 @@ export class SupervisorService {
     return {
       status: 'success',
       message: 'Password reset successfully',
+    };
+  }
+
+  //Active / deactivated SOFT DELETE YA ISLAM AHLA MESA 3ALEK
+  async changeAccountStatus(id: number): Promise<any> {
+    const supervisor = await this.supervisorRepository.findOne({ where: { id } });
+
+    if (!supervisor) throw new NotFoundException('Supervisor not found');
+
+    supervisor.isActive = supervisor.isActive ? false : true;
+    this.supervisorRepository.save(supervisor);
+
+    return {
+      status: 'success',
+      message: `Account is ${supervisor.isActive ? 'active' : 'deactivated'}`,
     };
   }
 }

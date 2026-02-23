@@ -1,6 +1,8 @@
+// src/Auth/dto/LoginDto.ts
+
 import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 
-export class LoginAdminDto {
+export class LoginDto {
   @IsNotEmpty()
   @IsEmail()
   email: string;
@@ -8,5 +10,5 @@ export class LoginAdminDto {
   @IsNotEmpty()
   @IsString()
   @Length(8, 255)
-  passwordHash: string;
+  password: string;
 }

@@ -58,9 +58,7 @@ export class JwtRegisterAuthGuard implements CanActivate {
         throw new NotFoundException('Account not found');
       }
 
-      const isActive = (account as any).isActive ?? (account as any).active;
-
-      if (isActive === false) {
+      if ((account as any).isActive === false) {
         throw new ForbiddenException('Your account is deactivated!');
       }
 

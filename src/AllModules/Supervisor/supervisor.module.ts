@@ -5,7 +5,6 @@ import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { SupervisorController } from './supervisor.controller';
 import { SupervisorService } from './supervisor.service';
-import { Admin } from '../../entities/Admin';
 import { Task } from '../../entities/Task';
 import { TaskWorker } from 'src/entities/TaskWorker';
 import { Supervisor } from '../../entities/Supervisor';
