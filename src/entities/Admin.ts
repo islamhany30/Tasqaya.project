@@ -1,4 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { Company } from './Company';
 import { Worker } from './Worker';
 import { Supervisor } from './Supervisor';
@@ -15,6 +16,7 @@ export class Admin {
   @Column({ unique: true, length: 120 })
   email: string;
 
+  @Exclude()
   @Column()
   passwordHash: string;
 
@@ -33,15 +35,19 @@ export class Admin {
   @Column({ default: true })
   isActive: boolean;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   verificationCode?: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   verificationCodeExpiry?: Date | null;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   resetCode: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 

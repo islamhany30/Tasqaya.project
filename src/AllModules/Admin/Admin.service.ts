@@ -82,7 +82,7 @@ export class AdminService implements IAuthUser {
   }
 
   //Delegations -> These will be called by the admin controller
-  //Pass this as the userService
+  //Pass (this) as the userService
   async register(dto: CreateAdminDto) {
     const { confirmPassword, ...rest } = dto;
     return this.authService.register(rest, 'Verify your admin account', this, UserRole.ADMIN);
@@ -114,5 +114,58 @@ export class AdminService implements IAuthUser {
 
   async resetPassword(dto: { email: string; newPassword: string }) {
     return this.authService.resetPassword(dto.email, dto.newPassword, this);
+  }
+
+  // ─── Admin-Specific Domain Logic ──────────────────────────────────
+  async getAdminById(id: number) {
+    const admin = await this.adminRepository.findOne({ where: { id } });
+
+    if (!admin) throw new NotFoundException('Admin not found');
+
+    return admin;
+  }
+
+  async editProfile(id: number, dto: UpdateAdminDto) {
+    const admin = await this.adminRepository.findOne({ where: { id } });
+
+    if (!admin) throw new NotFoundException('Admin not found');
+
+    //Only update fields that are provided in the DTO (allow partial updates)
+    //Because i want the other optional fields in the dto if not updated to be in the response as well
+    //Because i am using classSerializer, the undefined fields will be excluded from the response, so i want to keep the existing values for those fields in the response
+    Object.keys(dto).forEach((key) => {
+      if (dto[key] !== undefined) {
+        admin[key] = dto[key];
+      }
+    });
+
+    await this.adminRepository.save(admin);
+
+    return admin;
+  }
+
+  async deleteAccount(id: number) {
+    const admin = await this.adminRepository.findOne({ where: { id } });
+
+    if (!admin) throw new NotFoundException('Admin not found');
+
+    await this.adminRepository.delete(id);
+
+    return { message: 'Admin account deleted successfully' };
+  }
+
+  async updateProfileImage(adminId: number, newImagePath: string) {
+    const admin = await this.adminRepository.findOne({ where: { id: adminId } });
+    if (!admin) throw new NotFoundException('Admin not found');
+
+    if (admin.profileImage) {
+      const oldImagePath = path.resolve(admin.profileImage);
+      if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
+    }
+
+    admin.profileImage = newImagePath;
+    await this.adminRepository.save(admin);
+
+    return { message: 'Admin profile image updated successfully', profileImage: newImagePath };
   }
 }
