@@ -38,7 +38,7 @@ export class AuthService {
 
     const user = await userService.createUser({
       ...dto,
-      passwordHash: hashedPassword,
+      password: hashedPassword,
       verificationCode,
       verificationCodeExpiry: expiry,
       isActive: true,

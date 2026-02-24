@@ -18,7 +18,7 @@ export class Admin {
 
   @Exclude()
   @Column()
-  passwordHash: string;
+  password: string;
 
   @Column({ length: 255, nullable: true })
   profileImage: string;

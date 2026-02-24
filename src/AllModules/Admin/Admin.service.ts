@@ -35,7 +35,7 @@ export class AdminService implements IAuthUser {
 
   async validatePassword(plainText: string, user: Admin): Promise<boolean> {
     const bcrypt = await import('bcryptjs');
-    return bcrypt.compare(plainText, user.passwordHash);
+    return bcrypt.compare(plainText, user.password);
   }
 
   async createUser(data: Partial<Admin>): Promise<any> {
@@ -70,7 +70,7 @@ export class AdminService implements IAuthUser {
 
   async updatePassword(userId: number, hashedPassword: string): Promise<void> {
     await this.adminRepository.update(userId, {
-      passwordHash: hashedPassword,
+      password: hashedPassword,
     });
   }
 

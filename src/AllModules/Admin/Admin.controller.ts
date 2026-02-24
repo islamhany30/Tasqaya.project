@@ -47,7 +47,6 @@ export class AdminController {
   @UseGuards(JwtRegisterAuthGuard)
   @Post('verify')
   async verify(@Body() dto: VerifyEmailDto, @Req() req) {
-    console.log('zzzzzzzzzzzzzzzz');
     return this.adminService.verifyAdmin(dto.VERIFICATIONCODE, req.user.sub);
   }
 
