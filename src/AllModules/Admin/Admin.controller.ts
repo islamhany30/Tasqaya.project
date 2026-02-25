@@ -23,10 +23,10 @@ import { extname } from 'path';
 import { diskStorage } from 'multer';
 import * as path from 'path';
 
-import { CreateAdminDto } from './Dto/CreateAdminDto';
+import { CreateAdminDto } from './Dto/CreateAdmin.dto';
 import { LoginDto } from '../../Auth/Dto/Login.dto';
-import { UpdateAdminDto } from './Dto/UpdateAdminDto';
-import { ChangeCompanyStatusDto } from '../Company/Dto/change-company-status.dto';
+import { UpdateAdminDto } from './Dto/UpdateAdmin.dto';
+import { ChangeCompanyStatusDto } from '../Company/Dto/ChangeCompanyStatus.dto';
 
 import { AdminAuthGuard } from '../../Auth/Auth.roles';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
@@ -34,6 +34,7 @@ import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
+import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 
 @Controller('api/admin')
 export class AdminController {
@@ -82,6 +83,11 @@ export class AdminController {
     return this.adminService.resetPassword(resetPasswordDto);
   }
 
+  @Get('get-all-admins')
+  async getAllAdmins() {
+    return this.adminService.getAdmins();
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('get-admin-by-id')
   async getAdminById(@Req() req) {
@@ -96,8 +102,8 @@ export class AdminController {
 
   @UseGuards(JwtAuthGuard)
   @Delete('delete-account')
-  async deleteAccount(@Req() req) {
-    return this.adminService.deleteAccount(req.user.sub);
+  async deleteAccount(@Req() req, @Body() dto: DeactivateAccountDto) {
+    return this.adminService.deleteAccount(req.user.sub, dto);
   }
 
   @Put('upload-profile-image')
@@ -125,21 +131,20 @@ export class AdminController {
     return this.adminService.updateProfileImage(Number(req.user.sub), image.path);
   }
 
-  // @UseGuards(AdminAuthGuard)
-  // @Get('manage/company/:id')
-  // async getCompanyByAdmin(@Param('id', ParseIntPipe) companyId: number) {
-  //   return this.adminService.getCompanyDataForAdmin(companyId);
-  // }
+  @UseGuards(AdminAuthGuard)
+  @Patch('manage/company/:id/status')
+  async changeStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeCompanyStatusDto) {
+    return this.adminService.changeCompanyStatus(id, statusDto);
+  }
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/companies')
+  async getAllCompanies() {
+    return this.adminService.getAllCompaniesForAdmin();
+  }
 
-  // @UseGuards(AdminAuthGuard)
-  // @Patch('manage/company/:id/status')
-  // async changeStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeCompanyStatusDto) {
-  //   return this.adminService.changeCompanyStatus(id, statusDto);
-  // }
-
-  // @UseGuards(AdminAuthGuard)
-  // @Get('manage/companies')
-  // async getAllCompanies() {
-  //   return this.adminService.getAllCompaniesForAdmin();
-  // }
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/company/:id')
+  async getCompanyByAdmin(@Param('id', ParseIntPipe) companyId: number) {
+    return this.adminService.getCompanyById(companyId);
+  }
 }

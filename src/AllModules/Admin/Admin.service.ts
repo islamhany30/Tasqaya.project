@@ -7,9 +7,9 @@ import { IAuthUser } from '../../Auth/interfaces/IAuthUser.interface';
 import { UserRole } from '../../Enums/User.role';
 import { CompanyService } from '../Company/Company.service';
 import { MailService } from '../../Mail/MailService';
-import { ChangeCompanyStatusDto } from '../Company/Dto/change-company-status.dto';
-import { CreateAdminDto } from './Dto/CreateAdminDto';
-import { UpdateAdminDto } from './Dto/UpdateAdminDto';
+import { ChangeCompanyStatusDto } from '../Company/Dto/ChangeCompanyStatus.dto';
+import { CreateAdminDto } from './Dto/CreateAdmin.dto';
+import { UpdateAdminDto } from './Dto/UpdateAdmin.dto';
 import * as path from 'path';
 import * as fs from 'fs';
 import { privateDecrypt } from 'crypto';
@@ -81,6 +81,16 @@ export class AdminService implements IAuthUser {
     });
   }
 
+  async deactivateUser(userId: number): Promise<any> {
+    await this.adminRepository.update(userId, {
+      isActive: false,
+    });
+  }
+
+  async deleteUser(userId: number): Promise<any> {
+    await this.adminRepository.delete(userId);
+  }
+
   //Delegations -> These will be called by the admin controller
   //Pass (this) as the userService
   async register(dto: CreateAdminDto) {
@@ -116,7 +126,26 @@ export class AdminService implements IAuthUser {
     return this.authService.resetPassword(dto.email, dto.newPassword, this);
   }
 
+  //Hard delete
+  async deleteAccount(admnId: number, dto: { password: string }) {
+    return this.authService.deleteAccount(admnId, dto.password, this);
+  }
+
   // ─── Admin-Specific Domain Logic ──────────────────────────────────
+
+  async getAdmins() {
+    const admins = this.adminRepository.find();
+
+    if (!admins) throw new NotFoundException('No Admins is found');
+
+    return {
+      message: 'Admins Fetched successfully',
+      data: {
+        admins,
+      },
+    };
+  }
+
   async getAdminById(id: number) {
     const admin = await this.adminRepository.findOne({ where: { id } });
 
@@ -141,17 +170,12 @@ export class AdminService implements IAuthUser {
 
     await this.adminRepository.save(admin);
 
-    return admin;
-  }
-
-  async deleteAccount(id: number) {
-    const admin = await this.adminRepository.findOne({ where: { id } });
-
-    if (!admin) throw new NotFoundException('Admin not found');
-
-    await this.adminRepository.delete(id);
-
-    return { message: 'Admin account deleted successfully' };
+    return {
+      message: 'Admin profile is updated successfully',
+      data: {
+        admin,
+      },
+    };
   }
 
   async updateProfileImage(adminId: number, newImagePath: string) {
@@ -167,5 +191,17 @@ export class AdminService implements IAuthUser {
     await this.adminRepository.save(admin);
 
     return { message: 'Admin profile image updated successfully', profileImage: newImagePath };
+  }
+
+  async changeCompanyStatus(id: number, dto: { isActive: boolean }) {
+    return this.companyService.changeStatus(id, dto.isActive);
+  }
+
+  async getAllCompaniesForAdmin() {
+    return this.companyService.getAllCompanies();
+  }
+
+  async getCompanyById(id: number) {
+    return this.companyService.getCompanyById(id);
   }
 }

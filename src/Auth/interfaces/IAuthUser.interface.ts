@@ -16,4 +16,8 @@ export interface IAuthUser {
   clearResetCode(userId: number): Promise<void>;
 
   createUser(data: any): Promise<any>;
+
+  deactivateUser(userId: number): Promise<any>;
+
+  deleteUser(userId: number): Promise<any>;
 }

@@ -1,16 +1,8 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-  ManyToOne,
-  JoinColumn,
-  CreateDateColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, CreateDateColumn } from 'typeorm';
 import { Task } from './Task';
 import { CompanyFeedback } from './CompanyFeedback';
 import { Admin } from './Admin';
-
+import { Exclude } from 'class-transformer';
 @Entity('companies')
 export class Company {
   @PrimaryGeneratedColumn()
@@ -22,6 +14,7 @@ export class Company {
   @Column({ unique: true, length: 150 })
   email: string;
 
+  @Exclude()
   @Column({ length: 255 })
   password: string;
 
@@ -31,7 +24,7 @@ export class Company {
   @Column({ length: 255 })
   address: string;
 
-  @Column({ nullable: true,type:"varchar" })
+  @Column({ nullable: true, type: 'varchar' })
   profileImage: string | null;
 
   @Column({ default: false })
@@ -40,15 +33,19 @@ export class Company {
   @Column({ default: true })
   isActive: boolean;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   verificationCode?: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   verificationCodeExpiry?: Date | null;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   resetCode: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 

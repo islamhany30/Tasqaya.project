@@ -13,6 +13,7 @@ import { UserRole } from 'src/Enums/User.role';
 import { generateToken } from 'src/common/utils.jwt';
 import { IAuthUser } from './interfaces/IAuthUser.interface';
 import { identity } from 'rxjs';
+import { Not } from 'typeorm';
 
 @Injectable()
 export class AuthService {
@@ -130,7 +131,7 @@ export class AuthService {
 
     if (!user) throw new BadRequestException('User not found');
 
-    const isMatch = await bcrypt.compare(oldPassword, user.passwordHash);
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
 
     if (!isMatch) throw new UnauthorizedException('Old password is incorrect');
 
@@ -141,6 +142,7 @@ export class AuthService {
     return { message: 'Password changed successfully' };
   }
 
+  //Forgot Password
   async forgotPassword(email: string, userService: IAuthUser) {
     const user = await userService.findByEmail(email);
 
@@ -162,6 +164,7 @@ export class AuthService {
     };
   }
 
+  //Verify Reset password code
   async verifyResetCode(email: string, code: string, userService: IAuthUser) {
     const user = await userService.findByEmail(email);
 
@@ -176,6 +179,7 @@ export class AuthService {
     };
   }
 
+  //Reset password
   async resetPassword(email: string, newPassword: string, userService: IAuthUser) {
     const user = await userService.findByEmail(email);
 
@@ -190,6 +194,38 @@ export class AuthService {
 
     return {
       message: 'Password reset successfully',
+    };
+  }
+
+  async deactivateAccount(userId: number, plainText: string, userService: IAuthUser) {
+    const user = await userService.findById(userId);
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const isMatch = await userService.validatePassword(plainText, user);
+
+    if (!isMatch) throw new UnauthorizedException('Invalid Password');
+
+    await userService.deactivateUser(userId);
+
+    return {
+      message: 'Deactivated successfully',
+    };
+  }
+
+  async deleteAccount(userId: number, plainText: string, userService: IAuthUser) {
+    const user = await userService.findById(userId);
+
+    if (!user) throw new NotFoundException('User not found');
+
+    const isMatch = await userService.validatePassword(plainText, user);
+
+    if (!isMatch) throw new UnauthorizedException('Invalid Password');
+
+    await userService.deleteUser(userId);
+
+    return {
+      message: 'Deleted Successfully',
     };
   }
 
