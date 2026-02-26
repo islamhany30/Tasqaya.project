@@ -41,7 +41,11 @@ export class CompanyService implements IAuthUser {
   }
 
   async validatePassword(plainText: string, user: any): Promise<boolean> {
-    return await bcrypt.compare(plainText, user.password);
+    try {
+      return await bcrypt.compare(plainText, user.password);
+    } catch (error) {
+      return false;
+    }
   }
 
   async createUser(data: Partial<Company>): Promise<any> {

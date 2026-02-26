@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { TaskSupervisor } from './TaskSupervisor';
 import { Admin } from './Admin';
+import { Exclude } from 'class-transformer';
 
 @Entity('supervisors')
 export class Supervisor {
@@ -16,6 +17,10 @@ export class Supervisor {
   @Column({ length: 150, unique: true })
   email: string;
 
+  @Column({ length: 255, nullable: true })
+  address: string;
+
+  @Exclude()
   @Column({ length: 255 })
   password: string;
 
@@ -43,21 +48,26 @@ export class Supervisor {
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
 
+  @Exclude()
   @Column({ default: false })
   isVerified: boolean;
 
   @Column({ default: true })
   isActive: boolean;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   verificationCode?: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   verificationCodeExpiry?: Date | null;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   resetCode: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 

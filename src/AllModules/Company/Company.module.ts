@@ -9,7 +9,6 @@ import { CompanyService } from './Company.service';
 import { Admin } from '../../entities/Admin';
 import { Task } from '../../entities/Task';
 import { CompanyFeedback } from '../../entities/CompanyFeedback';
-import { AuthService } from 'src/Auth/Auth.service';
 import { AuthModule } from 'src/Auth/Auth.module';
 
 @Module({

@@ -3,16 +3,19 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailModule } from '../../Mail/Mail.module';
 import { JwtModule, JwtModuleOptions } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { SupervisorController } from './supervisor.controller';
-import { SupervisorService } from './supervisor.service';
+import { SupervisorController } from './Supervisor.controller';
+import { SupervisorService } from './Supervisor.service';
 import { Task } from '../../entities/Task';
 import { TaskWorker } from 'src/entities/TaskWorker';
 import { Supervisor } from '../../entities/Supervisor';
 import { TaskSupervisor } from 'src/entities/TaskSupervisor';
+import { AuthService } from 'src/Auth/Auth.service';
+import { AuthModule } from 'src/Auth/Auth.module';
 
 @Module({
   imports: [
     MailModule,
+    AuthModule,
     TypeOrmModule.forFeature([Supervisor, Task, TaskWorker, TaskSupervisor]),
     JwtModule.registerAsync({
       inject: [ConfigService],

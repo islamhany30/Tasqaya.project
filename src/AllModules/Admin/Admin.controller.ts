@@ -26,7 +26,7 @@ import * as path from 'path';
 import { CreateAdminDto } from './Dto/CreateAdmin.dto';
 import { LoginDto } from '../../Auth/Dto/Login.dto';
 import { UpdateAdminDto } from './Dto/UpdateAdmin.dto';
-import { ChangeCompanyStatusDto } from '../Company/Dto/ChangeCompanyStatus.dto';
+import { ChangeAccountStatusDto } from './Dto/ChangeAccountStatus.dto';
 
 import { AdminAuthGuard } from '../../Auth/Auth.roles';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
@@ -35,6 +35,7 @@ import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
+import { patch } from 'axios';
 
 @Controller('api/admin')
 export class AdminController {
@@ -131,9 +132,10 @@ export class AdminController {
     return this.adminService.updateProfileImage(Number(req.user.sub), image.path);
   }
 
+  //~~~~~~~~~~~~~~~~~~~Restricted only to ADMIN~~~~~~~~~~~~~~~~~~~~~~~
   @UseGuards(AdminAuthGuard)
   @Patch('manage/company/:id/status')
-  async changeStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeCompanyStatusDto) {
+  async changeStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
     return this.adminService.changeCompanyStatus(id, statusDto);
   }
   @UseGuards(AdminAuthGuard)
@@ -146,5 +148,23 @@ export class AdminController {
   @Get('manage/company/:id')
   async getCompanyByAdmin(@Param('id', ParseIntPipe) companyId: number) {
     return this.adminService.getCompanyById(companyId);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Patch('manage/supervisor/:id/status')
+  async changeAccountStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
+    return this.adminService.changeSupervisorStatus(id, statusDto);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/supervisors')
+  async getAllSupervisors() {
+    return this.adminService.getAllSupervisors();
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/supervisor/:id')
+  async getSupervisorById(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getSupervisorById(id);
   }
 }

@@ -7,13 +7,14 @@ import { IAuthUser } from '../../Auth/interfaces/IAuthUser.interface';
 import { UserRole } from '../../Enums/User.role';
 import { CompanyService } from '../Company/Company.service';
 import { MailService } from '../../Mail/MailService';
-import { ChangeCompanyStatusDto } from '../Company/Dto/ChangeCompanyStatus.dto';
+import { ChangeAccountStatusDto } from './Dto/ChangeAccountStatus.dto';
 import { CreateAdminDto } from './Dto/CreateAdmin.dto';
 import { UpdateAdminDto } from './Dto/UpdateAdmin.dto';
 import * as path from 'path';
 import * as fs from 'fs';
 import { privateDecrypt } from 'crypto';
 import { PassThrough } from 'stream';
+import { SupervisorService } from '../Supervisor/Supervisor.service';
 
 @Injectable()
 export class AdminService implements IAuthUser {
@@ -22,6 +23,7 @@ export class AdminService implements IAuthUser {
     private readonly adminRepository: Repository<Admin>,
     private readonly authService: AuthService,
     private readonly companyService: CompanyService,
+    private readonly supervisorService: SupervisorService,
   ) {}
 
   //IAuthUser Implementation (called by AuthService)
@@ -203,5 +205,17 @@ export class AdminService implements IAuthUser {
 
   async getCompanyById(id: number) {
     return this.companyService.getCompanyById(id);
+  }
+
+  async changeSupervisorStatus(id: number, dto: { isActive: boolean }) {
+    return this.supervisorService.changeStatus(id, dto.isActive);
+  }
+
+  async getAllSupervisors() {
+    return this.supervisorService.getAllSupervisors();
+  }
+
+  async getSupervisorById(id: number) {
+    return this.supervisorService.getSupervisorById(id);
   }
 }

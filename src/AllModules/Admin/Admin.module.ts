@@ -10,12 +10,14 @@ import { AdminController } from './Admin.controller';
 import { AdminService } from './Admin.service';
 import { CompanyModule } from '../Company/Company.module'; // عشان نقدر نستخدم الـ CompanyService
 import { AuthModule } from 'src/Auth/Auth.module';
+import { SupervisorModule } from '../Supervisor/Supervisor.module';
 
 @Module({
   imports: [
     AuthModule,
     MailModule,
     CompanyModule,
+    SupervisorModule,
     TypeOrmModule.forFeature([Admin, Company]),
     JwtModule.registerAsync({
       inject: [ConfigService],

@@ -13,6 +13,10 @@ export class CreateSupervisorDto {
 
   @IsString()
   @IsNotEmpty()
+  address: string;
+
+  @IsString()
+  @IsNotEmpty()
   @Length(8, 255)
   password: string;
 

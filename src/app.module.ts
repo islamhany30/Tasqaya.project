@@ -23,7 +23,7 @@ import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
 import { AdminModule } from './AllModules/Admin/Admin.module';
 import { ConfirmationToken } from './entities/confirmationToken';
-import { SupervisorModule } from './AllModules/Supervisor/supervisor.module';
+import { SupervisorModule } from './AllModules/Supervisor/Supervisor.module';
 
 @Module({
   imports: [

@@ -1,7 +1,7 @@
 import { IsBoolean } from 'class-validator';
 import { Transform } from 'class-transformer';
 
-export class ChangeCompanyStatusDto {
+export class ChangeAccountStatusDto {
   @IsBoolean()
   @Transform(({ value }) => {
     if (value === 'true') return true;

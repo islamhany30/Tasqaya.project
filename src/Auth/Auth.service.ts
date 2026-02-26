@@ -65,6 +65,8 @@ export class AuthService {
   async verifyUser(code: string, userId: number, userService: IAuthUser) {
     const user = await userService.findById(userId);
 
+    console.log(user);
+
     if (!user) throw new NotFoundException('User not found');
 
     if (user.isVerified) throw new BadRequestException('User already verified');
@@ -131,7 +133,7 @@ export class AuthService {
 
     if (!user) throw new BadRequestException('User not found');
 
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    const isMatch = await userService.validatePassword(oldPassword, user);
 
     if (!isMatch) throw new UnauthorizedException('Old password is incorrect');
 
