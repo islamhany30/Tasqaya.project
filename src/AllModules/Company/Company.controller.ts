@@ -105,6 +105,12 @@ export class CompanyController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  async getProfile(@Req() req: any) {
+    return this.companyService.getCompanyById(Number(req.user.sub));
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Patch('edit-profile')
   async editProfile(@Req() req: any, @Body() updateDto: UpdateCompanyDto) {
     return this.companyService.editProfile(req.user.sub, updateDto);

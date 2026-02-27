@@ -12,8 +12,10 @@ import {
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
-
-import { MailDTO } from '../../Mail/dto/Mail.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { extname } from 'path';
+import { diskStorage } from 'multer';
+import * as path from 'path';
 import { JwtAuthGuard } from '../../Auth/auth.guards';
 import { JwtRegisterAuthGuard } from '../../Auth/auth.guards.register';
 import { SupervisorService } from './Supervisor.service';
@@ -25,6 +27,7 @@ import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
+import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
 @Controller('api/supervisor')
 export class SupervisorController {
   constructor(private readonly supervisorService: SupervisorService) {}
@@ -76,5 +79,48 @@ export class SupervisorController {
   @Patch('deactivate-account')
   async deactivateAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.supervisorService.deactivateAccount(req.user.sub, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('delete-account')
+  async deleteAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
+    return this.supervisorService.deleteAccount(Number(req.user.sub), dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  async getProfile(@Req() req: any) {
+    return this.supervisorService.getSupervisorById(Number(req.user.sub));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('edit-profile')
+  async editProfile(@Req() req: any, dto: updateSupervisorDto) {
+    return this.supervisorService.editProfile(Number(req.user.sub), dto);
+  }
+
+  @Put('profile-image')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(
+    FileInterceptor('image', {
+      storage: diskStorage({
+        destination: path.join(process.cwd(), 'Uploads', 'Supervisor-Profile'),
+        filename: (req, file, callback) => {
+          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+          callback(null, `supervisor-${uniqueSuffix}${extname(file.originalname)}`);
+        },
+      }),
+      fileFilter: (req, file, callback) => {
+        if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
+          return callback(new BadRequestException('Only jpg, jpeg, png files are allowed!'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 4 * 1024 * 1024 },
+    }),
+  )
+  async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req: any) {
+    if (!image) throw new BadRequestException('Image file is required');
+    return this.supervisorService.updateProfileImage(Number(req.user.sub), image.path);
   }
 }

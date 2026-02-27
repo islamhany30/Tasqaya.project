@@ -9,13 +9,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company } from '../../entities/Company';
 import * as bcrypt from 'bcryptjs';
-import { MailService } from '../../Mail/MailService';
-import { MailDTO } from '../../Mail/dto/Mail.dto';
-import { JwtService } from '@nestjs/jwt';
-import { generateToken } from '../../common/utils.jwt';
 import { CreateCompanyDto } from './Dto/CreateCompany.dto';
 import { UpdateCompanyDto } from './Dto/UpdateCompany.dto';
-import { Payload } from '../../Types/Payload';
 import { UserRole } from '../../Enums/User.role';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -28,7 +23,6 @@ export class CompanyService implements IAuthUser {
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly authService: AuthService,
-    private readonly mailService: MailService,
   ) {}
 
   //IAuth CONTRACT

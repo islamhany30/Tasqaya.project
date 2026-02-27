@@ -8,11 +8,13 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
+import * as fs from 'fs';
 import { Supervisor } from 'src/entities/Supervisor';
 import { CreateSupervisorDto } from './Dto/CreateSupervisor.dto';
 import { UserRole } from 'src/Enums/User.role';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';
+import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
 
 @Injectable()
 export class SupervisorService implements IAuthUser {
@@ -169,5 +171,40 @@ export class SupervisorService implements IAuthUser {
         supervisor,
       },
     };
+  }
+
+  async editProfile(supervisorId: number, dto: updateSupervisorDto): Promise<any> {
+    const supervisor = await this.findById(supervisorId);
+
+    if (!supervisor) throw new NotFoundException('Supervisor is not found');
+
+    Object.keys(dto).forEach((key) => {
+      if (dto[key] !== undefined) {
+        supervisor[key] = dto[key];
+      }
+    });
+
+    await this.supervisorRepository.save(supervisor);
+
+    return {
+      message: 'Supervisor profile updated successfully!',
+      data: {
+        supervisor,
+      },
+    };
+  }
+
+  async updateProfileImage(supervisorId: number, newImagePath: string): Promise<any> {
+    const supervisor = await this.supervisorRepository.findOne({ where: { id: supervisorId } });
+    if (!supervisor) throw new NotFoundException('Supervisor not found');
+
+    if (supervisor.profileImage && fs.existsSync(supervisor.profileImage)) {
+      fs.unlinkSync(supervisor.profileImage);
+    }
+
+    supervisor.profileImage = newImagePath;
+    await this.supervisorRepository.save(supervisor);
+
+    return { message: 'Supervisor profile image updated successfully', profileImage: newImagePath };
   }
 }

@@ -18,19 +18,19 @@ import { SupervisorModule } from '../Supervisor/Supervisor.module';
     MailModule,
     CompanyModule,
     SupervisorModule,
-    TypeOrmModule.forFeature([Admin, Company]),
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      global: true,
-      useFactory: async (config: ConfigService): Promise<JwtModuleOptions> => {
-        return {
-          secret: config.get<string>('JWT_SECRET'),
-          signOptions: {
-            expiresIn: config.get<number>('JWT_EXPIRES_IN'),
-          },
-        };
-      },
-    }),
+    // TypeOrmModule.forFeature([Admin, Company]),
+    // JwtModule.registerAsync({
+    //   inject: [ConfigService],
+    //   global: true,
+    //   useFactory: async (config: ConfigService): Promise<JwtModuleOptions> => {
+    //     return {
+    //       secret: config.get<string>('JWT_SECRET'),
+    //       signOptions: {
+    //         expiresIn: config.get<number>('JWT_EXPIRES_IN'),
+    //       },
+    //     };
+    //   },
+    // }),
   ],
   controllers: [AdminController],
   providers: [AdminService],

@@ -16,18 +16,18 @@ import { AuthModule } from 'src/Auth/Auth.module';
     MailModule,
     AuthModule,
     TypeOrmModule.forFeature([Company, Admin, Task, CompanyFeedback]),
-    JwtModule.registerAsync({
-      inject: [ConfigService],
-      global: true,
-      useFactory: async (config: ConfigService): Promise<JwtModuleOptions> => {
-        return {
-          secret: config.get<string>('JWT_SECRET'),
-          signOptions: {
-            expiresIn: config.get<number>('JWT_EXPIRES_IN'),
-          },
-        };
-      },
-    }),
+    // JwtModule.registerAsync({
+    //   inject: [ConfigService],
+    //   global: true,
+    //   useFactory: async (config: ConfigService): Promise<JwtModuleOptions> => {
+    //     return {
+    //       secret: config.get<string>('JWT_SECRET'),
+    //       signOptions: {
+    //         expiresIn: config.get<number>('JWT_EXPIRES_IN'),
+    //       },
+    //     };
+    //   },
+    // }),
   ],
   controllers: [CompanyController],
   providers: [CompanyService],
