@@ -18,7 +18,7 @@ import { SupervisorModule } from '../Supervisor/Supervisor.module';
     MailModule,
     CompanyModule,
     SupervisorModule,
-    // TypeOrmModule.forFeature([Admin, Company]),
+    TypeOrmModule.forFeature([Admin, Company]),
     // JwtModule.registerAsync({
     //   inject: [ConfigService],
     //   global: true,

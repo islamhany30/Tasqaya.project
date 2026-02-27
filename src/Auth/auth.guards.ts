@@ -62,10 +62,7 @@ export class JwtAuthGuard implements CanActivate {
       }
 
       // 4. الحفاظ على اللوجيك الخاص بك (التحقق من النشاط والتفعيل)
-
-      // التعامل مع اختلاف مسمى حقل النشاط (active vs isActive)
-      const isActive = role === UserRole.COMPANY ? (account as any).isActive : (account as any).active;
-      if (isActive === false) {
+      if ((account as any).isActive === false) {
         throw new ForbiddenException('Your account is deactivated!');
       }
 

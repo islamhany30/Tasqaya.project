@@ -20,8 +20,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
 import * as path from 'path';
-
-import { MailDTO } from '../../Mail/dto/Mail.dto';
 import { CreateCompanyDto } from './Dto/CreateCompany.dto';
 import { UpdateCompanyDto } from './Dto/UpdateCompany.dto';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
