@@ -146,7 +146,7 @@ export class AdminController {
 
   @UseGuards(AdminAuthGuard)
   @Get('manage/company/:id')
-  async getCompanyByAdmin(@Param('id', ParseIntPipe) companyId: number) {
+  async getCompanyById(@Param('id', ParseIntPipe) companyId: number) {
     return this.adminService.getCompanyById(companyId);
   }
 

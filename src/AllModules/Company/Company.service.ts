@@ -193,7 +193,8 @@ export class CompanyService implements IAuthUser {
   }
 
   async getCompanyById(id: number): Promise<any> {
-    const company = await this.companyRepository.find({ where: { id } });
+    console.log('looking for company with id:', id, typeof id); // ← add this
+    const company = await this.companyRepository.findOne({ where: { id } });
 
     if (!company) throw new NotFoundException('Company not found');
 

@@ -95,8 +95,8 @@ export class SupervisorController {
 
   @UseGuards(JwtAuthGuard)
   @Patch('edit-profile')
-  async editProfile(@Req() req: any, dto: updateSupervisorDto) {
-    return this.supervisorService.editProfile(Number(req.user.sub), dto);
+  async editProfile(@Req() req: any, @Body() dto: updateSupervisorDto) {
+    return this.supervisorService.editProfile(req.user.sub, dto);
   }
 
   @Put('profile-image')

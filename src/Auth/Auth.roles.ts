@@ -10,7 +10,7 @@ import { Admin } from '../entities/Admin';
 export class AdminAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
-    private readonly dataSource: DataSource, //
+    private readonly dataSource: DataSource,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
