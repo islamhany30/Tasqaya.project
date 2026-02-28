@@ -24,6 +24,7 @@ import { WorkerPayout } from './entities/WorkerPayout';
 import { AdminModule } from './AllModules/Admin/Admin.module';
 import { ConfirmationToken } from './entities/confirmationToken';
 import { SupervisorModule } from './AllModules/Supervisor/Supervisor.module';
+import { WorkerModule } from './AllModules/Worker/Worker.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { SupervisorModule } from './AllModules/Supervisor/Supervisor.module';
     AdminModule,
     CompanyModule,
     SupervisorModule,
+    WorkerModule,
     MailModule,
   ],
   providers: [

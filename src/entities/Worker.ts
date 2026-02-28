@@ -1,11 +1,5 @@
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { WorkerLevel } from './WorkerLevel';
 import { Application } from './Application';
 import { TaskWorker } from './TaskWorker';
@@ -14,6 +8,7 @@ import { WorkerScoreHistory } from './WorkerScoreHistory';
 import { Admin } from './Admin';
 import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
+import { GenderEnum } from 'src/Enums/gender-enum';
 
 @Entity('workers')
 export class Worker {
@@ -26,12 +21,16 @@ export class Worker {
   @Column({ length: 20 })
   phone: string;
 
-  @Column({ length: 20, unique: true })
+  @Column({ length: 14, unique: true })
   nationalId: string;
 
   @Column({ length: 150, unique: true })
   email: string;
 
+  @Column({ type: 'enum', enum: GenderEnum })
+  gender: GenderEnum;
+
+  @Exclude()
   @Column({ length: 255 })
   password: string;
 
@@ -40,6 +39,9 @@ export class Worker {
 
   @Column({ default: 0 })
   score: number;
+
+  // @UpdateDateColumn()
+  // updatedAt: Date;
 
   @Column({ length: 255, nullable: true })
   profileImage: string;
@@ -65,15 +67,19 @@ export class Worker {
   @Column({ default: true })
   isActive: boolean;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   verificationCode?: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   verificationCodeExpiry?: Date | null;
 
+  @Exclude()
   @Column({ type: 'varchar', nullable: true })
   resetCode: string | null;
 
+  @Exclude()
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 
@@ -107,6 +113,4 @@ export class Worker {
 
   @OneToMany(() => ConfirmationToken, (token) => token.Worker)
   ConfirmationTokens: ConfirmationToken[];
-
-
 }
