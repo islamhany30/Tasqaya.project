@@ -14,7 +14,6 @@ import { CreateWorkerDto } from './../Worker/Dto/CreateWorker.dto';
 import { UserRole } from 'src/Enums/User.role';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';
-import { LoginDto } from 'src/Auth/Dto/Login.dto';
 
 @Injectable()
 export class WorkerService implements IAuthUser {
@@ -92,7 +91,7 @@ export class WorkerService implements IAuthUser {
     await this.workerRepository.delete(userId);
   }
 
-  //~~~~~~~~~~~~~~~~DELEGATIONS TO AUTH BY PASSING this KEYWORD~~~~~~~~~~~~~~~~~~~~~
+  //~~~~~~~~~~~~~~~~DELEGATIONS TO AUTH SERVICE BY PASSING this KEYWORD~~~~~~~~~~~~~~~~~~~~~
 
   async register(dto: CreateWorkerDto): Promise<any> {
     const { confirmPassword, ...rest } = dto;
@@ -133,5 +132,19 @@ export class WorkerService implements IAuthUser {
 
   async deleteAccount(supervisorId: number, dto: { password: string }): Promise<any> {
     return this.authService.deleteAccount(supervisorId, dto.password, this);
+  }
+
+  //~~~~~~~~~~~~~~~~~~~~~WORKER DOMAIN SPECIFIC LOGIC~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+  async changeStatus(workerId: number, isActive: boolean): Promise<any> {
+    const worker = await this.findById(workerId);
+
+    if (!worker) throw new NotFoundException('User not found');
+
+    await this.workerRepository.update(workerId, { isActive });
+
+    return {
+      message: `Worker account has been ${isActive ? 'activated' : 'deactivated'} successfully`,
+    };
   }
 }

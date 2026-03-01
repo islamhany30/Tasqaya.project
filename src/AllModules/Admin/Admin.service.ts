@@ -6,15 +6,12 @@ import { AuthService } from '../../Auth/Auth.service';
 import { IAuthUser } from '../../Auth/interfaces/IAuthUser.interface';
 import { UserRole } from '../../Enums/User.role';
 import { CompanyService } from '../Company/Company.service';
-import { MailService } from '../../Mail/MailService';
-import { ChangeAccountStatusDto } from './Dto/ChangeAccountStatus.dto';
 import { CreateAdminDto } from './Dto/CreateAdmin.dto';
 import { UpdateAdminDto } from './Dto/UpdateAdmin.dto';
 import * as path from 'path';
 import * as fs from 'fs';
-import { privateDecrypt } from 'crypto';
-import { PassThrough } from 'stream';
 import { SupervisorService } from '../Supervisor/Supervisor.service';
+import { WorkerService } from '../Worker/Worker.service';
 
 @Injectable()
 export class AdminService implements IAuthUser {
@@ -24,6 +21,7 @@ export class AdminService implements IAuthUser {
     private readonly authService: AuthService,
     private readonly companyService: CompanyService,
     private readonly supervisorService: SupervisorService,
+    private readonly workerService: WorkerService,
   ) {}
 
   //IAuthUser Implementation (called by AuthService)
@@ -217,5 +215,9 @@ export class AdminService implements IAuthUser {
 
   async getSupervisorById(id: number) {
     return this.supervisorService.getSupervisorById(id);
+  }
+
+  async changeWorkerStatus(id: number, dto: { isActive: boolean }) {
+    return this.workerService.changeStatus(id, dto.isActive);
   }
 }

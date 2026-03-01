@@ -8,9 +8,17 @@ import { AdminService } from './Admin.service';
 import { CompanyModule } from '../Company/Company.module'; // عشان نقدر نستخدم الـ CompanyService
 import { AuthModule } from 'src/Auth/Auth.module';
 import { SupervisorModule } from '../Supervisor/Supervisor.module';
+import { WorkerModule } from '../Worker/Worker.module';
 
 @Module({
-  imports: [AuthModule, MailModule, CompanyModule, SupervisorModule, TypeOrmModule.forFeature([Admin, Company])],
+  imports: [
+    AuthModule,
+    MailModule,
+    CompanyModule,
+    WorkerModule,
+    SupervisorModule,
+    TypeOrmModule.forFeature([Admin, Company]),
+  ],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService],

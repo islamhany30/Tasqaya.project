@@ -135,9 +135,10 @@ export class AdminController {
   //~~~~~~~~~~~~~~~~~~~Restricted only to ADMIN~~~~~~~~~~~~~~~~~~~~~~~
   @UseGuards(AdminAuthGuard)
   @Patch('manage/company/:id/status')
-  async changeStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
+  async changeCompanyStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
     return this.adminService.changeCompanyStatus(id, statusDto);
   }
+
   @UseGuards(AdminAuthGuard)
   @Get('manage/companies')
   async getAllCompanies() {
@@ -152,7 +153,7 @@ export class AdminController {
 
   @UseGuards(AdminAuthGuard)
   @Patch('manage/supervisor/:id/status')
-  async changeAccountStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
+  async changeSupervisorStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
     return this.adminService.changeSupervisorStatus(id, statusDto);
   }
 
@@ -166,5 +167,11 @@ export class AdminController {
   @Get('manage/supervisor/:id')
   async getSupervisorById(@Param('id', ParseIntPipe) id: number) {
     return this.adminService.getSupervisorById(id);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Patch('manage/worker/:id/status')
+  async changeWorkerStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
+    return this.adminService.changeWorkerStatus(id, statusDto);
   }
 }
