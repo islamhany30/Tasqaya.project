@@ -1,30 +1,39 @@
-import { ClassSerializerInterceptor, Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { Module, ClassSerializerInterceptor } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
+
 import { MailModule } from './Mail/Mail.module';
-import { CompanyModule } from './AllModules/Company/Company.module';
-import { Company } from './entities/Company';
+
+// Modules
+import { AdminModule } from './AllMoudles/Admin/Admin.module';
+import { CompanyModule } from './AllMoudles/Company/Company.module';
+import { SupervisorModule } from './AllMoudles/Supervisor/Supervisor.module';
+import { WorkerModule } from './AllMoudles/Worker/Worker.module';
+import { ConfirmationModule } from './AllMoudles/Confirmation/Confirmation.module';
+
+// Entities
 import { Admin } from './entities/Admin';
-import { Worker } from './entities/Worker';
-import { Task } from './entities/Task';
+import { Application } from './entities/Application';
+import { Attendance } from './entities/Attendance';
+import { Company } from './entities/Company';
 import { CompanyFeedback } from './entities/CompanyFeedback';
-import { Supervisor } from './entities/Supervisor';
-import { TaskWorker } from './entities/TaskWorker';
-import { TaskWorkerType } from './entities/TaskWorkerType';
-import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
-import { WorkerType } from './entities/WorkerType';
+import { ConfirmationToken } from './entities/confirmationToken';
 import { JobPost } from './entities/JobPost';
 import { Payment } from './entities/Payment';
-import { Attendance } from './entities/Attendance';
-import { Application } from './entities/Application';
+import { Supervisor } from './entities/Supervisor';
+import { SystemConfig } from './entities/SystemConfig';
+import { Task } from './entities/Task';
 import { TaskSupervisor } from './entities/TaskSupervisor';
+import { TaskWorker } from './entities/TaskWorker';
+import { TaskWorkerType } from './entities/TaskWorkerType';
+import { Worker } from './entities/Worker';
 import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
-import { AdminModule } from './AllModules/Admin/Admin.module';
-import { ConfirmationToken } from './entities/confirmationToken';
-import { SupervisorModule } from './AllModules/Supervisor/Supervisor.module';
-import { WorkerModule } from './AllModules/Worker/Worker.module';
+import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
+import { WorkerType } from './entities/WorkerType';
 
 @Module({
   imports: [
@@ -32,6 +41,8 @@ import { WorkerModule } from './AllModules/Worker/Worker.module';
       isGlobal: true,
       envFilePath: '.env.development',
     }),
+
+    ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -44,26 +55,37 @@ import { WorkerModule } from './AllModules/Worker/Worker.module';
         database: config.get<string>('DB_NAME'),
         entities: [
           Admin,
+          Application,
+          Attendance,
           Company,
-          Worker,
-          WorkerLevel,
-          WorkerType,
-          WorkerScoreHistory,
-          Task,
-          TaskWorker,
-          TaskWorkerType,
-          TaskSupervisor,
-          Supervisor,
           CompanyFeedback,
+          ConfirmationToken,
           JobPost,
           Payment,
-          Attendance,
-          Application,
+          Supervisor,
+          SystemConfig,
+          Task,
+          Worker,
+          WorkerLevel,
+          TaskSupervisor,
+          TaskWorker,
+          TaskWorkerType,
           WorkerPayout,
-          ConfirmationToken,
+          WorkerScoreHistory,
+          WorkerType,
         ],
-        synchronize: true, // خليها false عشان تستخدم migrations
+        synchronize: true,
         logging: true,
+      }),
+    }),
+
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get<string>('REDIS_HOST') || 'localhost',
+          port: Number(config.get<number>('REDIS_PORT')) || 6379,
+        },
       }),
     }),
 
@@ -72,7 +94,9 @@ import { WorkerModule } from './AllModules/Worker/Worker.module';
     SupervisorModule,
     WorkerModule,
     MailModule,
+    ConfirmationModule,
   ],
+
   providers: [
     {
       provide: APP_INTERCEPTOR,

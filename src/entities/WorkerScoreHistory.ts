@@ -8,7 +8,7 @@ export class WorkerScoreHistory {
 
   @ManyToOne(() => Worker, w => w.scoreHistory, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workerId' })
-  workerId: Worker;
+  worker: Worker;
 
   @Column()
   oldScore: number;

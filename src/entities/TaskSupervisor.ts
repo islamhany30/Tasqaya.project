@@ -18,14 +18,20 @@ export class TaskSupervisor {
   })
   supervisorBonus: number;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  whatsAppGroupLink: string;
+
+  @Column({ type: 'datetime', nullable: true })
+  whatsAppLinkAddedAt: Date;
+
 
   @ManyToOne(() => Task, t => t.supervisors, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
-  taskId: Task;
+  task: Task;
 
   @ManyToOne(() => Supervisor, s => s.taskAssignments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'supervisorId' })
-  supervisorId: Supervisor;
+  supervisor: Supervisor;
 
   
 }

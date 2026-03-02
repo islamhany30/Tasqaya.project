@@ -13,7 +13,7 @@ id: number;
     type:"enum",
     enum:WorkerTypeEnum
  })
-typeName: WorkerTypeEnum; // Organizing, Registration, etc.
+typeName: WorkerTypeEnum; 
 
 
 @OneToMany(() => TaskWorkerType, twt => twt.workerTypeId, { onDelete: 'CASCADE' })

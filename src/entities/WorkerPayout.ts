@@ -16,11 +16,11 @@ export class WorkerPayout {
 
   @ManyToOne(() => Worker, (w) => w.payouts, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workerId' })
-  workerId: Worker;
+  worker: Worker;
 
-  @ManyToOne(() => Task, (t) => t.payments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Task, (t) => t.payment, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
-  taskId: Task;
+  task: Task;
 
   @Column({ type: 'datetime' })
   payoutDate: Date;
