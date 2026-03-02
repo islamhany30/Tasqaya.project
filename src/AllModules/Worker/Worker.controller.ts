@@ -10,6 +10,7 @@ import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
+import { UpdateWorkerDto } from './Dto/UpdateWorker.dto';
 
 @Controller('api/worker')
 export class WorkerController {
@@ -74,5 +75,11 @@ export class WorkerController {
   @Get('profile')
   async getProfile(@Req() req: any) {
     return this.workerService.getWorkerById(req.user.sub);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('edit-profile')
+  async editProfile(@Req() req: any, @Body() dto: UpdateWorkerDto) {
+    return this.workerService.editProfile(req.user.sub, dto);
   }
 }

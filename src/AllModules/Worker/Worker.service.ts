@@ -14,6 +14,7 @@ import { CreateWorkerDto } from './../Worker/Dto/CreateWorker.dto';
 import { UserRole } from 'src/Enums/User.role';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';
+import { UpdateWorkerDto } from './Dto/UpdateWorker.dto';
 
 @Injectable()
 export class WorkerService implements IAuthUser {
@@ -155,6 +156,25 @@ export class WorkerService implements IAuthUser {
 
     return {
       message: 'Worker profile fetched successfully',
+      data: {
+        worker,
+      },
+    };
+  }
+
+  async editProfile(workerId: number, dto: UpdateWorkerDto): Promise<any> {
+    const worker = await this.findById(workerId);
+
+    if (!worker) throw new NotFoundException('User not found');
+
+    Object.keys(dto).forEach((key) => {
+      if (dto[key] !== undefined) worker[key] = dto[key];
+    });
+
+    await this.workerRepository.save(worker);
+
+    return {
+      message: 'Worker profile updated successfully',
       data: {
         worker,
       },
