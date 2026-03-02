@@ -31,11 +31,11 @@ import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
-import { TaskService } from 'src/AllMoudles/Task/Task.service';
-import { PaymentService } from 'src/AllMoudles/Payment/Payment.service';
+import { TaskService } from 'src/AllModules/Task/Task.service';
+import { PaymentService } from 'src/AllModules/Payment/Payment.service';
 import { TaskStatusEnum } from 'src/Enums/task-status.enum';
-import { CreateTaskDto } from 'src/AllMoudles/Task/Dto/Create.task.dto';
-import { UpdateTaskDto } from 'src/AllMoudles/Task/Dto/Update.task.dto';
+import { CreateTaskDto } from 'src/AllModules/Task/Dto/Create.task.dto';
+import { UpdateTaskDto } from 'src/AllModules/Task/Dto/Update.task.dto';
 import { PayInvoiceDto } from './Dto/PayInvoice.dto';
 import { CreateFeedbackDto } from './Dto/create-feedback.dto';
 

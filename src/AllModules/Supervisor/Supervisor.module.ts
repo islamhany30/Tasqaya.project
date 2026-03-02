@@ -9,7 +9,7 @@ import { Supervisor } from '../../entities/Supervisor';
 import { TaskSupervisor } from '../../entities/TaskSupervisor'; // صححت المسار هنا
 
 import { AuthModule } from 'src/Auth/Auth.module';
-import { TaskService } from 'src/AllMoudles/Task/Task.service';
+import { TaskService } from 'src/AllModules/Task/Task.service';
 import { MailService } from 'src/Mail/MailService';
 import { WorkerLevel } from 'src/entities/WorkerLevel';
 
