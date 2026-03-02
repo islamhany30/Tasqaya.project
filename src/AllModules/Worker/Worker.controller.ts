@@ -69,4 +69,10 @@ export class WorkerController {
   async deleteAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.workerService.deleteAccount(Number(req.user.sub), dto);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  async getProfile(@Req() req: any) {
+    return this.workerService.getWorkerById(req.user.sub);
+  }
 }

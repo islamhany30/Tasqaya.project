@@ -147,4 +147,17 @@ export class WorkerService implements IAuthUser {
       message: `Worker account has been ${isActive ? 'activated' : 'deactivated'} successfully`,
     };
   }
+
+  async getWorkerById(workerId: number): Promise<any> {
+    const worker = await this.findById(workerId);
+
+    if (!worker) throw new NotFoundException('User not found');
+
+    return {
+      message: 'Worker profile fetched successfully',
+      data: {
+        worker,
+      },
+    };
+  }
 }
