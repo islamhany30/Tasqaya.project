@@ -14,7 +14,7 @@ export class Attendance {
 
   @ManyToOne(() => Worker, w => w.attendance, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workerId' }) 
-  workerId: Worker;
+  worker: Worker;
 
   @Column({ type: 'datetime', nullable: true })
   checkInTime: Date;

@@ -11,6 +11,9 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  ParseIntPipe,
+  Render,
+  Param,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
@@ -28,9 +31,12 @@ import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
+import { TaskService } from 'src/AllMoudles/Task/Task.service';
 @Controller('api/supervisor')
 export class SupervisorController {
-  constructor(private readonly supervisorService: SupervisorService) {}
+  constructor(private readonly supervisorService: SupervisorService,
+    private readonly taskService: TaskService
+  ) {}
 
   @Post('register')
   async registerSupervisor(@Body() dto: CreateSupervisorDto) {
@@ -123,4 +129,18 @@ export class SupervisorController {
     if (!image) throw new BadRequestException('Image file is required');
     return this.supervisorService.updateProfileImage(Number(req.user.sub), image.path);
   }
+
+  @Get(':taskId/update-link')
+    @Render('update-whatsapp') 
+    getUpdatePage(@Param('taskId', ParseIntPipe) taskId: number) {
+      return { taskId }; 
+    }
+  
+    @Patch(':taskId/whatsapp-link')
+    async updateWhatsAppLink(
+      @Param('taskId', ParseIntPipe) taskId: number,
+      @Body('link') link: string,
+    ) {
+      return await this.taskService.saveWhatsAppLinkAndNotify(taskId, link);
+    }
 }

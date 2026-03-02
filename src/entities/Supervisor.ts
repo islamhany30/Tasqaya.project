@@ -73,8 +73,8 @@ export class Supervisor {
 
   @ManyToOne(() => Admin, (admin) => admin.workers, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'adminId' })
-  adminId: Admin;
+  admin: Admin;
 
-  @OneToMany(() => TaskSupervisor, (ts) => ts.supervisorId, { onDelete: 'CASCADE' })
+  @OneToMany(() => TaskSupervisor, ts => ts.supervisor, { onDelete: 'CASCADE' })
   taskAssignments: TaskSupervisor[];
 }

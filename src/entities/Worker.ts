@@ -8,7 +8,7 @@ import { WorkerScoreHistory } from './WorkerScoreHistory';
 import { Admin } from './Admin';
 import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
-import { GenderEnum } from 'src/Enums/gender-enum';
+import { GenderEnum } from 'src/Enums/gender.enum';
 
 @Entity('workers')
 export class Worker {
@@ -26,9 +26,6 @@ export class Worker {
 
   @Column({ length: 150, unique: true })
   email: string;
-
-  @Column({ type: 'enum', enum: GenderEnum })
-  gender: GenderEnum;
 
   @Exclude()
   @Column({ length: 255 })
@@ -87,16 +84,16 @@ export class Worker {
   @JoinColumn({ name: 'levelId' })
   level: WorkerLevel;
 
-  @OneToMany(() => Application, (a) => a.workerId, { onDelete: 'CASCADE' })
+  @OneToMany(() => Application, (a) => a.worker, { onDelete: 'CASCADE' })
   applications: Application[];
 
-  @OneToMany(() => TaskWorker, (tw) => tw.workerId, { onDelete: 'CASCADE' })
+  @OneToMany(() => TaskWorker, (tw) => tw.worker, { onDelete: 'CASCADE' })
   taskWorkers: TaskWorker[];
 
-  @OneToMany(() => Attendance, (a) => a.workerId, { onDelete: 'CASCADE' })
+  @OneToMany(() => Attendance, (a) => a.worker, { onDelete: 'CASCADE' })
   attendance: Attendance[];
 
-  @OneToMany(() => WorkerScoreHistory, (h) => h.workerId, {
+  @OneToMany(() => WorkerScoreHistory, (h) => h.worker, {
     onDelete: 'CASCADE',
   })
   scoreHistory: WorkerScoreHistory[];
@@ -106,9 +103,16 @@ export class Worker {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'adminId' })
-  adminId: Admin;
+  admin: Admin;
 
-  @OneToMany(() => WorkerPayout, (wp) => wp.workerId)
+  @Column({
+    type: 'enum',
+    enum: GenderEnum,
+    default: GenderEnum.MALE,
+  })
+  gender: GenderEnum;
+
+  @OneToMany(() => WorkerPayout, (wp) => wp.worker)
   payouts: WorkerPayout[];
 
   @OneToMany(() => ConfirmationToken, (token) => token.Worker)
