@@ -1,23 +1,22 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Task } from './Task';
 import { Company } from './Company';
-import { RatingEnum } from 'src/Enums/Rating.enum';
 
 @Entity('company_feedback')
 export class CompanyFeedback {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => Task, t => t.feedback, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Task, t => t.feedback, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
-  task: Task;
+  taskId: Task;
 
   @ManyToOne(() => Company, c => c.feedback, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'companyId' })
-  company: Company;
+  companyId: Company;
 
   @Column()
-  rating: RatingEnum;
+  rating: number;
 
   @Column({ length: 500, nullable: true })
   comment: string;

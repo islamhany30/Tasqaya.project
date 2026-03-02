@@ -14,6 +14,12 @@ export class ConfirmationToken {
   @PrimaryGeneratedColumn({ name: 'TokenID' })
   TokenID: number;
 
+  @Column({ name: 'WorkerID' })
+  WorkerID: number;
+
+  @Column({ name: 'TaskID' })
+  TaskID: number;
+
   @Column({ name: 'Token', type: 'nvarchar', length: 100, unique: true })
   Token: string;
 

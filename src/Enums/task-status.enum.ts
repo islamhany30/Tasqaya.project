@@ -1,6 +1,6 @@
 export enum TaskStatusEnum {
-  UNAPPROVED = 'UNAPPROVED',
-  PENDING = 'PENDING',        
-  IN_PROGRESS = 'IN_PROGRESS',
-  COMPLETED = 'COMPLETED',   
+  PENDING = 'PENDING',        // لسه ما بدأتش
+  IN_PROGRESS = 'IN_PROGRESS',// شغالة دلوقتي
+  COMPLETED = 'COMPLETED',    // خلصت
+  CANCELLED = 'CANCELLED',    // اتلغت
 }

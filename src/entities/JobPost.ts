@@ -1,20 +1,19 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Task } from './Task';
 import { Admin } from './Admin';
-import { JobPostStatusEnum } from 'src/Enums/job-post-status.enum';
 
 @Entity('job_posts')
 export class JobPost {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => Task, t => t.jobPost, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Task, t => t.jobPost, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
-  task: Task;
+  taskId: Task;
   
   @ManyToOne(() => Admin, a => a.jopposts, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'adminId' })
-  admin: Admin;
+  adminId: Admin;
 
   @Column({ type: 'datetime' })
   publishedAt: Date;
@@ -22,13 +21,12 @@ export class JobPost {
   @Column({ type: 'datetime' })
   deadline: Date;
 
+  @Column({ default: false })
+  isUrgent: boolean;
+
   @Column()
   maxAllowedWorkers: number;
 
-  @Column({ 
-    type: 'enum', 
-    enum: JobPostStatusEnum, 
-    default: JobPostStatusEnum.OPEN 
-  })
-  status: JobPostStatusEnum;
+  @Column({ length: 20 })
+  status: string;
 }

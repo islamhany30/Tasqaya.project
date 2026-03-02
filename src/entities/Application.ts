@@ -10,11 +10,11 @@ export class Application {
 
   @ManyToOne(() => JobPost, jp => jp.id, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'jobPostId' })
-  jobPost: JobPost;
+  jobPostId: JobPost;
 
   @ManyToOne(() => Worker, w => w.applications, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'workerId' })
-  worker: Worker;
+  workerId: Worker;
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   appliedAt: Date;

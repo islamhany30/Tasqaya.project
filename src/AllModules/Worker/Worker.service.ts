@@ -10,7 +10,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import { Worker } from 'src/entities/Worker';
-import { CreateWorkerDto } from './Dto/CreateWorker.dto';
+import { CreateWorkerDto } from './../Worker/Dto/CreateWorker.dto';
 import { UserRole } from 'src/Enums/User.role';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';

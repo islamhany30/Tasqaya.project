@@ -18,7 +18,7 @@ import { ConfigService } from '@nestjs/config';
           },
         },
         defaults: {
-          from: '"Taqaya" <tasqaya585@gmail.com>',
+          from: '"Tasqaya" <tasqaya585@gmail.com>',
         },
       }),
     }),
