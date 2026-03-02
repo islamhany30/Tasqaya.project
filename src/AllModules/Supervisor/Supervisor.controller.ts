@@ -99,8 +99,8 @@ export class SupervisorController {
     return this.supervisorService.editProfile(req.user.sub, dto);
   }
 
-  @Put('profile-image')
   @UseGuards(JwtAuthGuard)
+  @Put('profile-image')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({

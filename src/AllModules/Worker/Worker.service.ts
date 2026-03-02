@@ -162,6 +162,20 @@ export class WorkerService implements IAuthUser {
     };
   }
 
+  //For Admins
+  async getAllWorkers(): Promise<any> {
+    const workers = await this.workerRepository.find();
+
+    if (!workers) throw new NotFoundException('Workers not found');
+
+    return {
+      message: 'Workers fetched successfully',
+      data: {
+        workers,
+      },
+    };
+  }
+
   async editProfile(workerId: number, dto: UpdateWorkerDto): Promise<any> {
     const worker = await this.findById(workerId);
 
@@ -178,6 +192,24 @@ export class WorkerService implements IAuthUser {
       data: {
         worker,
       },
+    };
+  }
+
+  async uploadProfileImage(workerId: number, newImagePath: string): Promise<any> {
+    const worker = await this.findById(workerId);
+
+    if (!worker) throw new NotFoundException('User not found');
+
+    if (worker.profileImage && fs.existsSync(worker.profileImage)) {
+      fs.unlinkSync(worker.profileImage);
+    }
+
+    worker.profileImage = newImagePath;
+    this.workerRepository.save(worker);
+
+    return {
+      message: 'Profile image updated successfully',
+      profileImage: newImagePath,
     };
   }
 }

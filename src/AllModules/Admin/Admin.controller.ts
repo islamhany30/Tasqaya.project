@@ -35,7 +35,6 @@ import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
-import { patch } from 'axios';
 
 @Controller('api/admin')
 export class AdminController {
@@ -132,7 +131,8 @@ export class AdminController {
     return this.adminService.updateProfileImage(Number(req.user.sub), image.path);
   }
 
-  //~~~~~~~~~~~~~~~~~~~Restricted only to ADMIN~~~~~~~~~~~~~~~~~~~~~~~
+  //~~~~~~~~~~~~~~~~~~~Restricted actions only by ADMIN~~~~~~~~~~~~~~~~~~~~~~~~~
+
   @UseGuards(AdminAuthGuard)
   @Patch('manage/company/:id/status')
   async changeCompanyStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
@@ -173,5 +173,17 @@ export class AdminController {
   @Patch('manage/worker/:id/status')
   async changeWorkerStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
     return this.adminService.changeWorkerStatus(id, statusDto);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/worker/:id')
+  async getWorkerById(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getWorkerByID(id);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/workers')
+  async getAllWorkers() {
+    return this.adminService.getAllWorkers();
   }
 }

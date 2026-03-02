@@ -220,4 +220,12 @@ export class AdminService implements IAuthUser {
   async changeWorkerStatus(id: number, dto: { isActive: boolean }) {
     return this.workerService.changeStatus(id, dto.isActive);
   }
+
+  async getWorkerByID(id: number) {
+    return this.workerService.getWorkerById(id);
+  }
+
+  async getAllWorkers() {
+    return this.workerService.getAllWorkers();
+  }
 }
