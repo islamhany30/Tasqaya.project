@@ -149,19 +149,6 @@ export class WorkerService implements IAuthUser {
     };
   }
 
-  async getWorkerById(workerId: number): Promise<any> {
-    const worker = await this.findById(workerId);
-
-    if (!worker) throw new NotFoundException('User not found');
-
-    return {
-      message: 'Worker profile fetched successfully',
-      data: {
-        worker,
-      },
-    };
-  }
-
   //For Admins
   async getAllWorkers(): Promise<any> {
     const workers = await this.workerRepository.find();
@@ -172,6 +159,19 @@ export class WorkerService implements IAuthUser {
       message: 'Workers fetched successfully',
       data: {
         workers,
+      },
+    };
+  }
+
+  async getWorkerById(workerId: number): Promise<any> {
+    const worker = await this.findById(workerId);
+
+    if (!worker) throw new NotFoundException('User not found');
+
+    return {
+      message: 'Worker profile fetched successfully',
+      data: {
+        worker,
       },
     };
   }
