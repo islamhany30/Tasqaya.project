@@ -1,4 +1,4 @@
 export enum AssignmentTypeEnum {
-  PRIMARY = 'Primary',
-  BACKUP = 'Backup',
+  PRIMARY = 'PRIMARY',
+  BACKUP  = 'BACKUP',
 }

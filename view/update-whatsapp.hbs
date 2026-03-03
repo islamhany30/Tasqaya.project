@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Update Task Group Link</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8; /* أبيض مايل للأزرق خفيف */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+        h2 {
+            color: #1a73e8; /* أبيض في أزرق */
+            margin-bottom: 1rem;
+        }
+        p {
+            color: #5f6368;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 1.5rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #1a73e8;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #1557b0;
+        }
+        #message {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Task Group Link</h2>
+    <p>Please enter the WhatsApp group link for the confirmed team.</p>
+    
+    <input type="url" id="groupLink" placeholder="https://chat.whatsapp.com/..." required>
+    
+    <button onclick="submitLink()">Update & Notify Workers</button>
+    
+    <div id="message"></div>
+</div>
+
+<script>
+    async function submitLink() {
+        const link = document.getElementById('groupLink').value;
+        const msgDiv = document.getElementById('message');
+        
+        const urlPath = window.location.pathname;
+        const taskId = urlPath.split('/').pop();
+
+        if (!link.includes('chat.whatsapp.com')) {
+            msgDiv.style.display = 'block';
+            msgDiv.style.color = 'red';
+            msgDiv.innerText = 'Please enter a valid WhatsApp link.';
+            return;
+        }
+
+        try {
+            // منادي الـ Controller اللي عملناه في الـ NestJS
+            const response = await fetch(`/supervisor/tasks/${taskId}/whatsapp-link`, 
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                body: JSON.stringify({ link: link})
+            });
+
+            if (response.ok) {
+                msgDiv.style.display = 'block';
+                msgDiv.style.color = 'green';
+                msgDiv.innerText = 'Success! Link saved and workers notified.';
+                document.getElementById('groupLink').disabled = true;
+            } else {
+                throw new Error('Update failed');
+            }
+        } catch (error) {
+            msgDiv.style.display = 'block';
+            msgDiv.style.color = 'red';
+            msgDiv.innerText = 'Error updating link. Please try again.';
+        }
+    }
+</script>
+
+</body>
+</html>

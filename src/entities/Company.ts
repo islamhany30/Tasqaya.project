@@ -3,6 +3,8 @@ import { Task } from './Task';
 import { CompanyFeedback } from './CompanyFeedback';
 import { Admin } from './Admin';
 import { Exclude } from 'class-transformer';
+import { Payment } from './Payment';
+
 @Entity('companies')
 export class Company {
   @PrimaryGeneratedColumn()
@@ -54,7 +56,7 @@ export class Company {
     onDelete: 'SET NULL',
   })
   @JoinColumn({ name: 'adminId' })
-  adminId: Admin;
+  admin: Admin;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -62,6 +64,9 @@ export class Company {
   @OneToMany(() => Task, (t) => t.company, { onDelete: 'CASCADE' })
   tasks: Task[];
 
-  @OneToMany(() => CompanyFeedback, (f) => f.companyId, { onDelete: 'CASCADE' })
+  @OneToMany(() => CompanyFeedback, (f) => f.company, { onDelete: 'CASCADE' })
   feedback: CompanyFeedback[];
+
+  @OneToMany(() => Payment, p => p.company)
+  payments: Payment[];
 }

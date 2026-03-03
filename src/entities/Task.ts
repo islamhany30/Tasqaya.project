@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, OneToOne } from 'typeorm';
 import { Company } from './Company';
 import { WorkerLevel } from './WorkerLevel';
 import { JobPost } from './JobPost';
@@ -12,6 +12,8 @@ import { TaskApprovalStatusEnum } from '../Enums/task-approval.enum';
 import { TaskStatusEnum } from '../Enums/task-status.enum';
 import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
+import { GenderEnum } from 'src/Enums/gender.enum';
+import { requiredWorkersStatusEnum } from 'src/Enums/required-workers.enum';
 
 @Entity('tasks')
 export class Task {
@@ -24,6 +26,7 @@ export class Task {
 
   @Column({ length: 150 })
   eventName: string;
+
 
   @Column({ length: 255 })
   location: string;
@@ -40,13 +43,27 @@ export class Task {
   @Column()
   requiredWorkers: number;
 
+  @Column()
+  requiredSupervisors: number;
+
   @ManyToOne(() => WorkerLevel, wl => wl.tasks, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'workerLevelId' })
   workerLevel: WorkerLevel;
 
+  @Column({
+  type: 'enum',
+  enum: requiredWorkersStatusEnum,
+  default: requiredWorkersStatusEnum.PENDING
+})
+  requiredWorkerStatus: requiredWorkersStatusEnum;
+
 
   @Column('decimal', { precision: 10, scale: 2 })
   baseWorkersCost: number;
+
+  @Column('decimal', { precision: 10, scale: 2 })
+  supervisingFees: number;
+
 
   @Column('decimal', { precision: 8, scale: 2 })
   platformFee: number;
@@ -80,25 +97,31 @@ export class Task {
   @OneToMany(() => TaskWorkerType, twt => twt.taskId, { cascade: true })
   workerTypes: TaskWorkerType[];
 
-  @OneToMany(() => JobPost, jp => jp.taskId, { cascade: true })
-  jobPost: JobPost[];
+  @OneToOne(() => JobPost, jp => jp.task, { cascade: true })
+  jobPost: JobPost;
 
-  @OneToMany(() => TaskWorker, tw => tw.taskId, { cascade: true })
+  @Column({
+    type: 'simple-array',
+    nullable: true,
+  })
+  genders: GenderEnum[];
+
+  @OneToMany(() => TaskWorker, tw => tw.task, { cascade: true })
   taskWorkers: TaskWorker[];
 
   @OneToMany(() => Attendance, a => a.task, { cascade: true })
   attendance: Attendance[];
 
-  @OneToMany(() => TaskSupervisor, ts => ts.taskId, { cascade: true })
+  @OneToMany(() => TaskSupervisor, ts => ts.task, { cascade: true })
   supervisors: TaskSupervisor[];
 
-  @OneToMany(() => Payment, p => p.taskId, { cascade: true })
-  payments: Payment[];
+  @OneToOne(() => Payment, (payment) => payment.task)
+  payment: Payment; 
 
-  @OneToMany(() => CompanyFeedback, f => f.taskId, { cascade: true })
+  @OneToOne(() => CompanyFeedback, f => f.task, { cascade: true })
   feedback: CompanyFeedback[];
 
-  @OneToMany(() => WorkerPayout, wp => wp.taskId)
+  @OneToMany(() => WorkerPayout, wp => wp.task)
   workerPayouts: WorkerPayout[];
 
   @OneToMany(() => ConfirmationToken, (token) => token.Task)

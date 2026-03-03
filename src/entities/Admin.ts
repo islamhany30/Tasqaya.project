@@ -51,16 +51,17 @@ export class Admin {
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 
-  @OneToMany(() => Company, (company) => company.adminId)
+
+  @OneToMany(() => Company, company => company.admin)
   companies: Company[];
 
-  @OneToMany(() => Worker, (worker) => worker.adminId)
+  @OneToMany(() => Worker, (worker) => worker.admin)
   workers: Worker[];
 
-  @OneToMany(() => Supervisor, (supervisor) => supervisor.adminId)
+  @OneToMany(() => Supervisor, supervisor => supervisor.admin)
   supervisors: Supervisor[];
 
-  @OneToMany(() => JobPost, (joppost) => joppost.adminId)
+  @OneToMany(() => JobPost, joppost => joppost.admin)
   jopposts: JobPost[];
 
   @CreateDateColumn()
