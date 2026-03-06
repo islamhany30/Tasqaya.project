@@ -8,11 +8,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { MailModule } from './Mail/Mail.module';
 
 // Modules
-import { AdminModule } from './AllMoudles/Admin/Admin.module';
-import { CompanyModule } from './AllMoudles/Company/Company.module';
-import { SupervisorModule } from './AllMoudles/Supervisor/Supervisor.module';
-import { WorkerModule } from './AllMoudles/Worker/Worker.module';
-import { ConfirmationModule } from './AllMoudles/Confirmation/Confirmation.module';
+import { AdminModule } from './AllModules/Admin/Admin.module';
+import { CompanyModule } from './AllModules/Company/Company.module';
+import { SupervisorModule } from './AllModules/Supervisor/Supervisor.module';
+import { WorkerModule } from './AllModules/Worker/Worker.module';
+import { ConfirmationModule } from './AllModules/Confirmation/Confirmation.module';
 
 // Entities
 import { Admin } from './entities/Admin';
@@ -74,7 +74,7 @@ import { WorkerType } from './entities/WorkerType';
           WorkerScoreHistory,
           WorkerType,
         ],
-        synchronize: true,
+        synchronize: false,
         logging: true,
       }),
     }),

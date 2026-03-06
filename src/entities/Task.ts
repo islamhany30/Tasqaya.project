@@ -12,8 +12,8 @@ import { TaskApprovalStatusEnum } from '../Enums/task-approval.enum';
 import { TaskStatusEnum } from '../Enums/task-status.enum';
 import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
-import { GenderEnum } from 'src/Enums/gender.enum';
-import { requiredWorkersStatusEnum } from 'src/Enums/required-workers.enum';
+import { GenderEnum } from '../Enums/gender.enum';
+import { requiredWorkersStatusEnum } from '../Enums/required-workers.enum';
 
 @Entity('tasks')
 export class Task {

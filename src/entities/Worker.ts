@@ -8,7 +8,7 @@ import { WorkerScoreHistory } from './WorkerScoreHistory';
 import { Admin } from './Admin';
 import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
-import { GenderEnum } from 'src/Enums/gender.enum';
+import { GenderEnum } from '../Enums/gender.enum';
 
 @Entity('workers')
 export class Worker {

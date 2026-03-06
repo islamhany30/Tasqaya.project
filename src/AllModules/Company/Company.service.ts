@@ -11,8 +11,8 @@ import { UpdateCompanyDto } from './Dto/UpdateCompany.dto';
 import { UserRole } from '../../Enums/User.role';
 import * as path from 'path';
 import * as fs from 'fs';
-import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
-import { AuthService } from 'src/Auth/Auth.service';
+import { IAuthUser } from '../../Auth/interfaces/IAuthUser.interface';
+import { AuthService } from '../../Auth/Auth.service';
 
 @Injectable()
 export class CompanyService implements IAuthUser {

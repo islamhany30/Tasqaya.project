@@ -8,9 +8,9 @@ import {
 
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { MailService } from 'src/Mail/MailService';
-import { UserRole } from 'src/Enums/User.role';
-import { generateToken } from 'src/common/utils.jwt';
+import { MailService } from '../Mail/MailService';
+import { UserRole } from '../Enums/User.role';
+import { generateToken } from '../common/utils.jwt';
 import { IAuthUser } from './interfaces/IAuthUser.interface';
 import { identity } from 'rxjs';
 import { Not } from 'typeorm';

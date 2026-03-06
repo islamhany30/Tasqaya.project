@@ -12,14 +12,14 @@ import { SystemConfig } from '../../entities/SystemConfig';
 import { CompanyFeedback } from '../../entities/CompanyFeedback';
 import { CreateFeedbackDto } from '../Company/Dto/create-feedback.dto';
 import { PaymentStatusEnum } from '../../Enums/payment-status.enum';
-import { WorkerType } from 'src/entities/WorkerType';
-import { TaskWorkerType } from 'src/entities/TaskWorkerType';
-import { Payment } from 'src/entities/Payment';
-import { WorkerConfirmationStatusEnum } from 'src/Enums/worker-confirmation.enum';
-import { MailService } from 'src/Mail/MailService';
-import { TaskSupervisor } from 'src/entities/TaskSupervisor';
-import { TaskWorker } from 'src/entities/TaskWorker';
-import { requiredWorkersStatusEnum } from 'src/Enums/required-workers.enum';
+import { WorkerType } from '../../entities/WorkerType';
+import { TaskWorkerType } from '../../entities/TaskWorkerType';
+import { Payment } from '../../entities/Payment';
+import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum';
+import { MailService } from '../../Mail/MailService';
+import { TaskSupervisor } from '../../entities/TaskSupervisor';
+import { TaskWorker } from '../../entities/TaskWorker';
+import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 
 @Injectable()
 export class TaskService {

@@ -64,9 +64,10 @@ export class CreateTaskDto {
   workerTypes: WorkerTypeEnum[];
 
   // ───────── إضافة Enum للنوع الاجتماعي ─────────
-  @IsEnum(GenderEnum, { message: 'Gender must be either male or female' }) //
-  @IsNotEmpty({ message: 'Gender is required!' })
-  gender: GenderEnum[];
+@IsArray({ message: 'Gender must be an array' })
+@IsEnum(GenderEnum, { each: true, message: 'Each gender must be a valid option' })
+@IsNotEmpty({ message: 'Gender is required!' })
+gender: GenderEnum[];
 
   @IsBoolean({ message: 'hasUniform must be a boolean' })
   hasUniform: boolean = false;

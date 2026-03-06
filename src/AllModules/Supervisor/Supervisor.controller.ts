@@ -31,7 +31,7 @@ import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
-import { TaskService } from 'src/AllMoudles/Task/Task.service';
+import { TaskService } from 'src/AllModules/Task/Task.service';
 @Controller('api/supervisor')
 export class SupervisorController {
   constructor(private readonly supervisorService: SupervisorService,

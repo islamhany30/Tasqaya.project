@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { Task } from './Task';
 import { Admin } from './Admin';
-import { JobPostStatusEnum } from 'src/Enums/job-post-status.enum';
+import { JobPostStatusEnum } from '../Enums/job-post-status.enum';
 
 @Entity('job_posts')
 export class JobPost {
