@@ -1,11 +1,11 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ConfirmationToken } from '../../entities/confirmationToken'; 
-import { TaskWorker } from '../../entities/TaskWorker'; 
-import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum'; 
-import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum'; 
-import { ConfirmationTokenService } from './Confirmation-token.service'; 
+import { ConfirmationToken } from '../../entities/confirmationToken';
+import { TaskWorker } from '../../entities/TaskWorker';
+import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum';
+import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum';
+import { ConfirmationTokenService } from './Confirmation-token.service';
 import { Task } from 'src/entities/Task';
 import { MailService } from 'src/Mail/MailService';
 import { requiredWorkersStatusEnum } from 'src/Enums/required-workers.enum';
@@ -16,17 +16,16 @@ export class ConfirmationResponseService {
 
   constructor(
     @InjectRepository(ConfirmationToken)
-    private readonly tokenRepo: Repository<ConfirmationToken>, 
+    private readonly tokenRepo: Repository<ConfirmationToken>,
 
     @InjectRepository(TaskWorker)
-    private readonly taskWorkerRepo: Repository<TaskWorker>, 
+    private readonly taskWorkerRepo: Repository<TaskWorker>,
 
     @InjectRepository(Task)
-    private readonly taskRepo: Repository<Task>, 
+    private readonly taskRepo: Repository<Task>,
 
-    private readonly confirmationTokenService: ConfirmationTokenService, 
-    private readonly mailService: MailService, 
-
+    private readonly confirmationTokenService: ConfirmationTokenService,
+    private readonly mailService: MailService,
   ) {}
 
   /**
@@ -35,7 +34,7 @@ export class ConfirmationResponseService {
   async respond(tokenValue: string, isYes: boolean): Promise<boolean> {
     const token = await this.tokenRepo.findOne({
       where: { Token: tokenValue },
-      relations: ['Worker', 'Task'], 
+      relations: ['Worker', 'Task'],
     });
 
     if (!token) throw new NotFoundException(`Token "${tokenValue}" not found`);
@@ -53,10 +52,7 @@ export class ConfirmationResponseService {
       await this.checkCompletionAndNotifySupervisors(token.Task.id);
     }
 
-    this.logger.log(
-      `Worker #${token.Worker.id} responded ${isYes ? 'YES ✅' : 'NO ❌'} for task #${token.Task.id}`,
-    );
-
+    this.logger.log(`Worker #${token.Worker.id} responded ${isYes ? 'YES ✅' : 'NO ❌'} for task #${token.Task.id}`);
 
     return true;
   }
@@ -88,9 +84,9 @@ export class ConfirmationResponseService {
    */
   private async getTaskWorker(workerId: number, taskId: number): Promise<TaskWorker> {
     const taskWorker = await this.taskWorkerRepo.findOne({
-      where: { 
+      where: {
         worker: { id: workerId },
-        task: { id: taskId }
+        task: { id: taskId },
       },
     });
 
@@ -100,16 +96,15 @@ export class ConfirmationResponseService {
     return taskWorker;
   }
 
-
   private async promoteBackupWorker(taskId: number) {
     const backupWorker = await this.taskWorkerRepo.findOne({
-      where: { 
-        task: { id: taskId }, 
+      where: {
+        task: { id: taskId },
         assignmentType: AssignmentTypeEnum.BACKUP,
-        confirmationStatus: WorkerConfirmationStatusEnum.PENDING 
+        confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
       },
-      order: { backupOrder: 'ASC' }, 
-      relations: ['worker', 'task']
+      order: { backupOrder: 'ASC' },
+      relations: ['worker', 'task'],
     });
 
     if (!backupWorker) {
@@ -122,27 +117,27 @@ export class ConfirmationResponseService {
   }
 
   private async checkCompletionAndNotifySupervisors(taskId: number) {
-  const task = await this.taskRepo.findOne({
-    where: { id: taskId },
-    relations: ['supervisors', 'supervisors.supervisor']
-  });
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId },
+      relations: ['supervisors', 'supervisors.supervisor'],
+    });
 
-  if (!task) {
-    this.logger.error(`Task with ID ${taskId} not found during completion check`);
-    return;
-  }
+    if (!task) {
+      this.logger.error(`Task with ID ${taskId} not found during completion check`);
+      return;
+    }
 
-  const confirmedWorkersCount = await this.taskWorkerRepo.count({
-    where: { task: { id: taskId }, confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED }
-  });
+    const confirmedWorkersCount = await this.taskWorkerRepo.count({
+      where: { task: { id: taskId }, confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED },
+    });
 
-  if (confirmedWorkersCount === task.requiredWorkers) {
-    task.requiredWorkerStatus = requiredWorkersStatusEnum.COMPLETED;
-    for (const ts of task.supervisors) {
-      await this.mailService.sendMail({
-        to: ts.supervisor.email,
-        subject: `Action Required: Group Creation for ${task.eventName}`,
-        html: `
+    if (confirmedWorkersCount === task.requiredWorkers) {
+      task.requiredWorkerStatus = requiredWorkersStatusEnum.COMPLETED;
+      for (const ts of task.supervisors) {
+        await this.mailService.sendMail({
+          to: ts.supervisor.email,
+          subject: `Action Required: Group Creation for ${task.eventName}`,
+          html: `
   <div style="direction: ltr; font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 20px; border-radius: 10px;">
     <h2 style="color: #2c3e50;">Action Required: Team Fully Confirmed! 🚀</h2>
     <p style="font-size: 16px;">All required workers for the task <b>${task.eventName}</b> have confirmed their attendance.</p>
@@ -163,9 +158,9 @@ export class ConfirmationResponseService {
     
     <p style="margin-top: 30px; font-size: 12px; color: #7f8c8d;">Thank you for your cooperation.</p>
   </div>
-`
-      });
+`,
+        });
+      }
     }
   }
-}
 }

@@ -41,9 +41,10 @@ import { CreateFeedbackDto } from './Dto/create-feedback.dto';
 
 @Controller('api/company')
 export class CompanyController {
-  constructor(private readonly companyService: CompanyService,
-        private readonly taskService: TaskService,  
-        private readonly paymentService: PaymentService
+  constructor(
+    private readonly companyService: CompanyService,
+    private readonly taskService: TaskService,
+    private readonly paymentService: PaymentService,
   ) {}
 
   @Post('register')
@@ -138,167 +139,132 @@ export class CompanyController {
     return this.companyService.deleteAccount(req.user.sub, dto);
   }
 
-  @Post("create-task")
-    @UseGuards(JwtAuthGuard)
-    async create(@Body() createTaskDto: CreateTaskDto, @Req() req) {
-      const companyId = req.user.sub;     
-      return await this.taskService.createTaskByCompany(createTaskDto, companyId);
-    }
-  
-    @Patch(':id/approve')
-    @UseGuards(JwtAuthGuard)
-    async approve(
-      @Param('id', ParseIntPipe) id: number, 
-      @Req() req
-    ) {
-      const companyId = req.user.sub;
-      
-      return await this.taskService.approveTaskByCompany(id, companyId);
-      
-    }
-  
+  @Post('create-task')
+  @UseGuards(JwtAuthGuard)
+  async create(@Body() createTaskDto: CreateTaskDto, @Req() req) {
+    const companyId = req.user.sub;
+    return await this.taskService.createTaskByCompany(createTaskDto, companyId);
+  }
+
+  @Patch(':id/approve')
+  @UseGuards(JwtAuthGuard)
+  async approve(@Param('id', ParseIntPipe) id: number, @Req() req) {
+    const companyId = req.user.sub;
+    return await this.taskService.approveTaskByCompany(id, companyId);
+  }
+
   @Get('my-tasks')
   @UseGuards(JwtAuthGuard)
   async getMyTasks(@Req() req) {
-    const companyId = req.user.sub; 
+    const companyId = req.user.sub;
     const tasks = await this.taskService.getCompanyApprovedTasks(companyId);
     return {
       count: tasks.length,
-      tasks: tasks
+      tasks: tasks,
     };
   }
-  
+
   @Get('tasks/pending')
   @UseGuards(JwtAuthGuard)
   async getPending(@Req() req) {
     const companyId = req.user.sub;
     return await this.taskService.getCompanyTasksByStatus(companyId, TaskStatusEnum.PENDING);
   }
-  
+
   @Get('tasks/in-progress')
   @UseGuards(JwtAuthGuard)
   async getInProgress(@Req() req) {
     const companyId = req.user.sub;
     return await this.taskService.getCompanyTasksByStatus(companyId, TaskStatusEnum.IN_PROGRESS);
   }
-  
+
   @Get('tasks/completed')
   @UseGuards(JwtAuthGuard)
   async getCompleted(@Req() req) {
     const companyId = req.user.sub;
     return await this.taskService.getCompanyTasksByStatus(companyId, TaskStatusEnum.COMPLETED);
   }
-  
-  
+
   @Get('tasks/:taskId')
-  @UseGuards(JwtAuthGuard) 
-  async getTaskDetails(
-    @Param('taskId', ParseIntPipe) taskId: number, 
-    @Req() req,
-  ) {
+  @UseGuards(JwtAuthGuard)
+  async getTaskDetails(@Param('taskId', ParseIntPipe) taskId: number, @Req() req) {
     const companyId = req.user.sub;
-  
+
     return await this.taskService.getTaskDetailsForCompany(taskId, companyId);
   }
-  
+
   @Patch('update/:taskId')
-  @UseGuards(JwtAuthGuard) 
-  async update(
-    @Param('taskId', ParseIntPipe) taskId: number,
-    @Body() dto: UpdateTaskDto,
-    @Req() req,
-  ) {
-      const companyId = req.user.sub;
-      return await this.taskService.updateTask(taskId, companyId, dto);
-    }
-  
+  @UseGuards(JwtAuthGuard)
+  async update(@Param('taskId', ParseIntPipe) taskId: number, @Body() dto: UpdateTaskDto, @Req() req) {
+    const companyId = req.user.sub;
+    return await this.taskService.updateTask(taskId, companyId, dto);
+  }
+
   @Delete('delete-task/:taskId')
-    async delete(
-      @Param('taskId', ParseIntPipe) taskId: number,
-      @Req() req,
-    ) {
-      const companyId = req.user.sub;
-      return await this.taskService.deleteTaskByCompany(taskId, companyId);
-    }
-  
-    @Get('/payments')
-    @UseGuards(JwtAuthGuard) 
-    async getMyInvoices(@Req() req: any) {
-      const companyId = req.user.sub; 
-      return await this.paymentService.getCompanyInvoices(companyId);
-    }
-  
-    @Get('payments/:paymentId')
-    @UseGuards(JwtAuthGuard) 
-    async getInvoiceDetails(
-      @Param('paymentId', ParseIntPipe) paymentId: number,
-      @Req() req,
-    ) {
-      const companyId = req.user.sub; 
-      return await this.paymentService.getCompanyInvoiceDetails(paymentId, companyId);
-    }
-  
-   @Post('payments/:paymentId/pay')
-    @UseGuards(JwtAuthGuard)
-    async payInvoice(
-      @Param('paymentId', ParseIntPipe) paymentId: number,
-      @Body() body: PayInvoiceDto,
-      @Req() req,
-    ) {
-      const companyId = req.user.sub;
-  
-      return await this.paymentService.initiatePayment(
-        paymentId,
-        companyId,
-        body.method
-      );
-    }
-  
+  async delete(@Param('taskId', ParseIntPipe) taskId: number, @Req() req) {
+    const companyId = req.user.sub;
+    return await this.taskService.deleteTaskByCompany(taskId, companyId);
+  }
+
+  @Get('/payments')
+  @UseGuards(JwtAuthGuard)
+  async getMyInvoices(@Req() req: any) {
+    const companyId = req.user.sub;
+    return await this.paymentService.getCompanyInvoices(companyId);
+  }
+
+  @Get('payments/:paymentId')
+  @UseGuards(JwtAuthGuard)
+  async getInvoiceDetails(@Param('paymentId', ParseIntPipe) paymentId: number, @Req() req) {
+    const companyId = req.user.sub;
+    return await this.paymentService.getCompanyInvoiceDetails(paymentId, companyId);
+  }
+
+  @Post('payments/:paymentId/pay')
+  @UseGuards(JwtAuthGuard)
+  async payInvoice(@Param('paymentId', ParseIntPipe) paymentId: number, @Body() body: PayInvoiceDto, @Req() req) {
+    const companyId = req.user.sub;
+
+    return await this.paymentService.initiatePayment(paymentId, companyId, body.method);
+  }
+
   @Post(':taskId/feedback')
   @UseGuards(JwtAuthGuard)
-  async submitFeedback(
-    @Param('taskId', ParseIntPipe) taskId: number,
-    @Body() dto: CreateFeedbackDto,
-    @Req() req
-  ) {
+  async submitFeedback(@Param('taskId', ParseIntPipe) taskId: number, @Body() dto: CreateFeedbackDto, @Req() req) {
     const companyId = req.user.sub;
     return await this.taskService.submitTaskFeedback(taskId, dto, companyId);
   }
-  
-    @Get('feedback')
-    @UseGuards(JwtAuthGuard)
-    async getMyFeedbacks(@Req() req) {
-      const companyId = req.user.sub;
-      return await this.taskService.getCompanyFeedbacks(companyId);
-    }
-  
-    @Get('tasks/pending')
-    @UseGuards(JwtAuthGuard)
-    async getPendingTasks(@Req() req) {
-      const companyId = req.user.sub;
-      const tasks = await this.taskService.getPendingCompanyTasks(companyId);
-      
-      return {
-        count: tasks.length,
-        tasks: tasks
-      };
-    }
-  
-    @Get('dashboard/stats')
-    @UseGuards(JwtAuthGuard)
-    async getDashboardStats(@Req() req) {
-      const companyId = req.user.sub;
-      return await this.taskService.getCompanyDashboardStats(companyId);
-    }
-  
-  
+
+  @Get('feedback')
+  @UseGuards(JwtAuthGuard)
+  async getMyFeedbacks(@Req() req) {
+    const companyId = req.user.sub;
+    return await this.taskService.getCompanyFeedbacks(companyId);
+  }
+
+  @Get('tasks/pending')
+  @UseGuards(JwtAuthGuard)
+  async getPendingTasks(@Req() req) {
+    const companyId = req.user.sub;
+    const tasks = await this.taskService.getPendingCompanyTasks(companyId);
+
+    return {
+      count: tasks.length,
+      tasks: tasks,
+    };
+  }
+
+  @Get('dashboard/stats')
+  @UseGuards(JwtAuthGuard)
+  async getDashboardStats(@Req() req) {
+    const companyId = req.user.sub;
+    return await this.taskService.getCompanyDashboardStats(companyId);
+  }
+
   @Get(':taskId/confirmed-workers')
   @UseGuards(JwtAuthGuard)
-  async getConfirmedWorkersForTask(
-    @Param('taskId', ParseIntPipe) taskId: number,
-    @Req() req, 
-  ) {
-    const companyId = req.user.sub; 
+  async getConfirmedWorkersForTask(@Param('taskId', ParseIntPipe) taskId: number, @Req() req) {
+    const companyId = req.user.sub;
     return await this.taskService.getConfirmedWorkers(taskId, companyId);
   }
 }

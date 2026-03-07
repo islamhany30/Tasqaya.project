@@ -1,4 +1,10 @@
-import { Injectable, Logger, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Repository } from 'typeorm';
@@ -25,60 +31,49 @@ export class ConfirmationTokenService {
     private readonly confirmationQueue: Queue,
   ) {}
 
-async issueTokenAndNotify(taskWorker: TaskWorker): Promise<void> {
+  async issueTokenAndNotify(taskWorker: TaskWorker): Promise<void> {
+    const worker = taskWorker.worker as any;
+    const task = taskWorker.task as any;
 
-  const worker = taskWorker.worker as any;
-  const task = taskWorker.task as any;
+    if (!worker) throw new NotFoundException('Worker not found');
+    if (!task) throw new NotFoundException('Task not found');
+    if (!worker?.email) throw new BadRequestException('Worker email not found');
 
-  if (!worker) throw new NotFoundException('Worker not found');
-  if (!task) throw new NotFoundException('Task not found');
-  if (!worker?.email) throw new BadRequestException('Worker email not found');
+    // ✅ prevent duplicate active tokens
+    const existingToken = await this.tokenRepo.findOne({
+      where: {
+        Worker: { id: worker.id },
+        Task: { id: task.id },
+        IsUsed: false,
+      },
+    });
 
-  // ✅ prevent duplicate active tokens
-  const existingToken = await this.tokenRepo.findOne({
-    where: {
-      Worker: { id: worker.id },
-      Task: { id: task.id },
-      IsUsed: false,
-    },
-  });
+    if (existingToken && existingToken.ExpiresAt > new Date()) {
+      this.logger.warn(`Active token exists → worker=${worker.id}, task=${task.id}`);
 
-  if (existingToken && existingToken.ExpiresAt > new Date()) {
+      return;
+    }
 
-    this.logger.warn(
-      `Active token exists → worker=${worker.id}, task=${task.id}`,
-    );
+    // invalidate expired tokens only
+    await this.invalidateOldTokens(worker.id, task.id);
 
-    return;
+    const token = await this.createToken(worker.id, task.id);
+
+    await this.setPendingStatus(taskWorker.id);
+
+    try {
+      await this.sendConfirmationEmail(worker, task, token.Token);
+    } catch (error) {
+      this.logger.error(`Email failed → worker=${worker.id}, task=${task.id}`, error.stack);
+
+      await this.tokenRepo.update(token.TokenID, { IsUsed: true });
+
+      throw new InternalServerErrorException('Failed to send confirmation email');
+    }
+    await this.scheduleAutoDecline(worker.id, task.id);
+
+    this.logger.log(`Confirmation sent → worker=${worker.id}, task=${task.id}`);
   }
-
-  // invalidate expired tokens only
-  await this.invalidateOldTokens(worker.id, task.id);
-
-  const token = await this.createToken(worker.id, task.id);
-
-  await this.setPendingStatus(taskWorker.id);
-
-try {
-
-  await this.sendConfirmationEmail(worker, task, token.Token);
-
-} catch (error) {
-
-  this.logger.error(
-    `Email failed → worker=${worker.id}, task=${task.id}`,
-    error.stack,
-  );
-
-  await this.tokenRepo.update(token.TokenID, { IsUsed: true });
-
-  throw new InternalServerErrorException('Failed to send confirmation email');
-
-}
-  await this.scheduleAutoDecline(worker.id, task.id);
-
-  this.logger.log(`Confirmation sent → worker=${worker.id}, task=${task.id}`);
-}
 
   private async createToken(workerId: number, taskId: number) {
     const expiresAt = new Date(Date.now() + this.TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
@@ -150,7 +145,6 @@ try {
       { delay: this.TOKEN_EXPIRY_HOURS * 60 * 60 * 1000, removeOnComplete: true },
     );
   }
-
 
   async markTokenUsed(tokenId: number): Promise<void> {
     const updateResult = await this.tokenRepo.update(tokenId, { IsUsed: true });

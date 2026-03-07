@@ -11,6 +11,9 @@ import {
   UseInterceptors,
   BadRequestException,
   UploadedFile,
+  Query,
+  Param,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { WorkerService } from './Worker.service';
 import { CreateWorkerDto } from './Dto/CreateWorker.dto';
@@ -24,6 +27,9 @@ import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { UpdateWorkerDto } from './Dto/UpdateWorker.dto';
+import { PaginationDto } from './Dto/PaginationDto';
+import { GetWorkerJobsQueryDto } from './Dto/GetWorkerJobsQueryDto';
+import { CreateApplicationDto } from './Dto/CreateApplicationDto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
@@ -123,5 +129,31 @@ export class WorkerController {
   async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req: any) {
     if (!image) throw new BadRequestException('Image file is required');
     return this.workerService.uploadProfileImage(Number(req.user.sub), image.path);
+  }
+
+  // ==================== JOB BROWSING ENDPOINTS ====================
+
+  @UseGuards(JwtAuthGuard)
+  @Get('job-posts')
+  async getAvailableJobs(@Query() query: GetWorkerJobsQueryDto, @Req() req: any) {
+    return this.workerService.getAvailableJobs(req.user.sub, query);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('apply')
+  async applyForJob(@Body() dto: CreateApplicationDto, @Req() req: any) {
+    return this.workerService.applyForJob(req.user.sub, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('applications')
+  async getMyApplications(@Query() query: PaginationDto, @Req() req: any) {
+    return this.workerService.getMyApplications(req.user.sub, query);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete('applications/:applicationId')
+  async withdrawApplication(@Param('applicationId', ParseIntPipe) applicationId: number, @Req() req: any) {
+    return this.workerService.withdrawApplication(applicationId, req.user.sub);
   }
 }

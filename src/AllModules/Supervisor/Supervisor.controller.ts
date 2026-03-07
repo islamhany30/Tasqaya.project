@@ -34,8 +34,9 @@ import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
 import { TaskService } from 'src/AllModules/Task/Task.service';
 @Controller('api/supervisor')
 export class SupervisorController {
-  constructor(private readonly supervisorService: SupervisorService,
-    private readonly taskService: TaskService
+  constructor(
+    private readonly supervisorService: SupervisorService,
+    private readonly taskService: TaskService,
   ) {}
 
   @Post('register')
@@ -131,16 +132,13 @@ export class SupervisorController {
   }
 
   @Get(':taskId/update-link')
-    @Render('update-whatsapp') 
-    getUpdatePage(@Param('taskId', ParseIntPipe) taskId: number) {
-      return { taskId }; 
-    }
-  
-    @Patch(':taskId/whatsapp-link')
-    async updateWhatsAppLink(
-      @Param('taskId', ParseIntPipe) taskId: number,
-      @Body('link') link: string,
-    ) {
-      return await this.taskService.saveWhatsAppLinkAndNotify(taskId, link);
-    }
+  @Render('update-whatsapp')
+  getUpdatePage(@Param('taskId', ParseIntPipe) taskId: number) {
+    return { taskId };
+  }
+
+  @Patch(':taskId/whatsapp-link')
+  async updateWhatsAppLink(@Param('taskId', ParseIntPipe) taskId: number, @Body('link') link: string) {
+    return await this.taskService.saveWhatsAppLinkAndNotify(taskId, link);
+  }
 }

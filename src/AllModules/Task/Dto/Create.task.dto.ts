@@ -16,7 +16,7 @@ import {
 import { Type } from 'class-transformer';
 // استيراد الـ Enums المحدثة
 import { WorkerTypeEnum } from '../../../Enums/worker-type.enum'; //
-import { GenderEnum } from '../../../Enums/gender.enum';         //
+import { GenderEnum } from '../../../Enums/gender.enum'; //
 import { WorkerLevelEnum } from '../../../Enums/worker-level.enum'; //
 
 export class CreateTaskDto {
@@ -55,7 +55,7 @@ export class CreateTaskDto {
   // ───────── التحديث باستخدام Enum للمستوى ─────────
   @IsEnum(WorkerLevelEnum, { message: 'Invalid worker level' }) //
   @IsNotEmpty({ message: 'Worker level is required' })
-  workerLevel: WorkerLevelEnum; 
+  workerLevel: WorkerLevelEnum;
 
   // ───────── التحديث باستخدام Enum للنوع ─────────
   @IsArray({ message: 'workerTypes must be an array' })
@@ -64,7 +64,8 @@ export class CreateTaskDto {
   workerTypes: WorkerTypeEnum[];
 
   // ───────── إضافة Enum للنوع الاجتماعي ─────────
-  @IsEnum(GenderEnum, { message: 'Gender must be either male or female' }) //
+  @IsArray({ message: 'gender must be an array' })
+  @IsEnum(GenderEnum, { each: true, message: 'Invalid gender value' }) //
   @IsNotEmpty({ message: 'Gender is required!' })
   gender: GenderEnum[];
 
