@@ -6,14 +6,13 @@ import { ResetPasswordDto } from './Dto/ResetPassword.dto';
 import { LoginDto } from './Dto/Login.dto';
 import { JwtAccountAuthGuard } from './auth.guards.account';
 
-
 @Controller('api/auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email,dto.password);
+    return this.authService.login(dto.email, dto.password);
   }
 
   @Post('forgot-password')
@@ -23,7 +22,7 @@ export class AuthController {
 
   @UseGuards(JwtAccountAuthGuard)
   @Post('verify-reset-code')
-  async verifyResetCode(@Body() dto: VerifyResetCodeDto,@Req() req) {
+  async verifyResetCode(@Body() dto: VerifyResetCodeDto, @Req() req) {
     return this.authService.verifyResetCode(req.user.id, dto.code);
   }
 
@@ -35,7 +34,7 @@ export class AuthController {
 
   @UseGuards(JwtAccountAuthGuard)
   @Patch('reset-password')
-  async resetPassword(@Body() dto: ResetPasswordDto,@Req() req) {
+  async resetPassword(@Body() dto: ResetPasswordDto, @Req() req) {
     return this.authService.resetPassword(req.user.id, dto.newPassword);
   }
 }

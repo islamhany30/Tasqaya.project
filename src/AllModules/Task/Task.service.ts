@@ -533,8 +533,6 @@ export class TaskService {
     });
   }
 
-  // task.service.ts
-
   async saveWhatsAppLinkAndNotify(taskId: number, link: string) {
     const taskAssignment = await this.taskSupervisorRepo.findOne({
       where: { task: { id: taskId } },
@@ -612,10 +610,17 @@ export class TaskService {
   }
 
   private async createJobPostForTask(task: Task) {
+    const publishedAt = new Date();
+
+    const deadline = new Date(task.startDate);
+    deadline.setHours(deadline.getHours() - 48);
+
     const jobPost = this.jobPostRepo.create({
       task: { id: task.id },
       maxAllowedWorkers: task.requiredWorkers,
       status: JobPostStatusEnum.OPEN,
+      publishedAt,
+      deadline,
     });
     return await this.jobPostRepo.save(jobPost);
   }

@@ -13,7 +13,7 @@ describe('AuthController', () => {
   // JwtAccountAuthGuard بيستخدم JwtService + DataSource
   // .overrideGuard() بيحل الموضوع من غير ما نحتاج inject أي dependencies
   const mockGuard = { canActivate: jest.fn().mockReturnValue(true) };
-  const mockReq   = (id = 1) => ({ user: { id } });
+  const mockReq = (id = 1) => ({ user: { id } });
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -22,18 +22,19 @@ describe('AuthController', () => {
         {
           provide: AuthService,
           useValue: {
-            login:           jest.fn(),
-            forgotPassword:  jest.fn(),
+            login: jest.fn(),
+            forgotPassword: jest.fn(),
             verifyResetCode: jest.fn(),
-            resetPassword:   jest.fn(),
+            resetPassword: jest.fn(),
           },
         },
       ],
     })
-      .overrideGuard(JwtAccountAuthGuard).useValue(mockGuard)
+      .overrideGuard(JwtAccountAuthGuard)
+      .useValue(mockGuard)
       .compile();
 
-    controller  = module.get(AuthController);
+    controller = module.get(AuthController);
     authService = module.get(AuthService);
   });
 

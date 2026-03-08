@@ -128,7 +128,9 @@ export class WorkerService implements IAuthUser {
 
   async verifyResetCode(dto: { email: string; code: string }): Promise<any> {
     const account = await this.authService['accountRepo'].findOne({ where: { email: dto.email } });
+
     if (!account) throw new NotFoundException('User not found');
+
     return this.authService.verifyResetCode(account.id, dto.code);
   }
 
@@ -241,12 +243,12 @@ export class WorkerService implements IAuthUser {
 
     // Build QueryBuilder query
     let queryBuilder = this.jobPostRepository
-      .createQueryBuilder('jp')
-      .innerJoinAndSelect('jp.task', 'task')
-      .innerJoinAndSelect('task.workerLevel', 'level')
-      .leftJoin('applications', 'app', 'app.jobPostId = jp.id AND app.workerId = :workerId', { workerId })
-      .addSelect('COUNT(DISTINCT appCount.id)', 'applicationsCount')
-      .leftJoin('applications', 'appCount', 'appCount.jobPostId = jp.id');
+      .createQueryBuilder('jp') // job post alias
+      .innerJoinAndSelect('jp.task', 'task') // join task
+      .innerJoinAndSelect('task.workerLevel', 'level') // join worker level
+      .leftJoin('applications', 'app', 'app.jobPostId = jp.id AND app.workerId = :workerId', { workerId }) // left join to check if current worker has applied
+      .addSelect('COUNT(DISTINCT appCount.id)', 'applicationsCount') // count total applications for each job post
+      .leftJoin('applications', 'appCount', 'appCount.jobPostId = jp.id'); // join again for counting total applications
 
     // Base filters
     queryBuilder = queryBuilder
@@ -306,6 +308,7 @@ export class WorkerService implements IAuthUser {
     const jobPosts = await queryBuilder.getRawMany();
 
     // Transform results to JobListResponseDto format
+    // Note: getRawMany returns raw database results, so we need to map them to our desired format
     const jobs = jobPosts.map((jp) => ({
       id: jp.jp_id,
       eventName: jp.task_eventName,
@@ -327,7 +330,7 @@ export class WorkerService implements IAuthUser {
       hasUserApplied: !!jp.app_id,
     }));
 
-    const totalPages = Math.ceil(total / query.limit);
+    const totalPages = Math.ceil(total / query.limit); //
 
     return {
       message: 'Available jobs fetched successfully',
@@ -402,7 +405,7 @@ export class WorkerService implements IAuthUser {
       //Close the job post then
       jobPost.status = JobPostStatusEnum.CLOSED;
 
-      //Call The filterarion logic
+      //Call The filterarion logic to select the best candidates based on the criteria and mark them as accepted while the rest as rejected
 
       //Throw exception message
       throw new BadRequestException('This job post has reached the maximum number of applications');

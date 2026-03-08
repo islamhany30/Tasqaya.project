@@ -1,4 +1,3 @@
-// payment.controller.ts
 import { Controller, Get, Query } from '@nestjs/common';
 import { PaymentService } from './Payment.service';
 
