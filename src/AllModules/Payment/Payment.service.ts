@@ -44,17 +44,13 @@ export class PaymentService {
       'success',
     ];
 
-    const dataString = keys
-      .map((k) => {
-        const parts = k.split('.');
-        let value: any = payload;
-        for (const part of parts) value = value?.[part];
-        return String(value ?? '');
-      })
-      .join('');
-
+    const dataString = keys.map((key) => this.getNestedValue(payload, key)).join('');
     const hashed = crypto.createHmac('sha512', secureHash).update(dataString).digest('hex');
     return hashed === hmacFromUrl;
+  }
+
+  private getNestedValue(obj: any, path: string): string {
+    return path.split('.').reduce((current, prop) => current?.[prop] ?? '', obj);
   }
 
   async createInitialInvoice(task: Task, companyId: number) {
@@ -91,7 +87,7 @@ export class PaymentService {
   async getCompanyInvoices(companyId: number): Promise<Payment[]> {
     return await this.paymentRepo.find({
       where: { company: { id: companyId } },
-      relations: ['task'], // BUG FIX: كان 'taskId' وده غلط — الـ relation اسمها 'task'
+      relations: ['task'],
       select: {
         id: true,
         totalAmount: true,
@@ -111,7 +107,7 @@ export class PaymentService {
         id: paymentId,
         company: { id: companyId },
       },
-      relations: ['task'], // BUG FIX: كان 'taskId' وده غلط — الـ relation اسمها 'task'
+      relations: ['task'],
     });
 
     if (!payment) {
@@ -144,23 +140,6 @@ export class PaymentService {
     };
   }
 
-  async applyLateFees() {
-    const fiveDaysAgo = new Date();
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-
-    const lateInvoices = await this.paymentRepo
-      .createQueryBuilder('p')
-      .innerJoinAndSelect('p.taskId', 't')
-      .where('p.status = :status', { status: PaymentStatusEnum.PENDING })
-      .andWhere('t.endDate < :deadline', { deadline: fiveDaysAgo })
-      .getMany();
-
-    for (const inv of lateInvoices) {
-      inv.totalAmount = Number(inv.totalAmount) + 500;
-      await this.paymentRepo.save(inv);
-    }
-  }
-
   async initiatePayment(
     paymentId: number,
     companyId: number,
@@ -174,7 +153,7 @@ export class PaymentService {
     // 1️⃣ جلب بيانات الفاتورة
     const payment = await this.paymentRepo.findOne({
       where: { id: paymentId, company: { id: companyId } },
-      relations: ['taskId', 'company'],
+      relations: ['task', 'company'],
     });
 
     if (!payment) {

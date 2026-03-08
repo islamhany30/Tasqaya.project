@@ -33,5 +33,11 @@ export class TaskSupervisor {
   @JoinColumn({ name: 'supervisorId' })
   supervisor: Supervisor;
 
+  @Column({ type: 'longblob', nullable: true })
+  attendanceFile: Buffer;
+
+  @Column({ type: 'datetime', nullable: true })
+  attendanceUploadedAt: Date;
+
   
 }

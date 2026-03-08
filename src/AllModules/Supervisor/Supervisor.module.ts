@@ -18,6 +18,8 @@ import { Payment } from '../../entities/Payment';
 import { SystemConfig } from 'src/entities/SystemConfig';
 import { CompanyFeedback } from 'src/entities/CompanyFeedback';
 import { TaskModule } from '../Task/Task.module';
+import { SupervisorPayout } from 'src/entities/SupervisorPayout';
+import { Attendance } from 'src/entities/Attendance';
 // استورد باقي الـ Entities (SystemConfig, CompanyFeedback, etc.) من أماكنها الحقيقية
 // ---------------------------------------------------------
 
@@ -33,6 +35,8 @@ import { TaskModule } from '../Task/Task.module';
         TaskSupervisor, 
         WorkerLevel,
         Payment, 
+        SupervisorPayout,
+        Attendance
     ])
   ],
  controllers: [SupervisorController],

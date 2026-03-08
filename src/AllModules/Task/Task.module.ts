@@ -17,6 +17,8 @@ import { MailModule } from 'src/Mail/Mail.module';
 import { TaskSupervisor } from 'src/entities/TaskSupervisor';
 import { TaskWorkerType } from 'src/entities/TaskWorkerType';
 import { JobPost } from 'src/entities/JobPost';
+import { Attendance } from 'src/entities/Attendance';
+import { Worker } from 'src/entities/Worker';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { JobPost } from 'src/entities/JobPost';
       TaskSupervisor,
       JobPost,
       TaskWorkerType,
+      Attendance,
+      Worker,
     ]),
     PaymentModule,
     MailModule,

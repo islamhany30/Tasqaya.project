@@ -43,7 +43,7 @@ export class ConfirmationSchedulerService {
         status: JobPostStatusEnum.CLOSED,
         task: { startDate: Between(windowStart, windowEnd) },
       },
-      relations: ['id'],
+      relations: ['task'],
     });
 
     if (!jobPosts.length) {
@@ -68,7 +68,7 @@ export class ConfirmationSchedulerService {
         assignmentType: AssignmentTypeEnum.PRIMARY,
         confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
       },
-      relations: ['workerId', 'taskId'],
+      relations: ['worker', 'task'],
     });
 
     if (!primaryWorkers.length) {

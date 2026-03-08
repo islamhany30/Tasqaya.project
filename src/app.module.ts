@@ -35,6 +35,7 @@ import { WorkerPayout } from './entities/WorkerPayout';
 import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
 import { WorkerType } from './entities/WorkerType';
 import { Account } from './entities/Accounts';
+import { SupervisorPayout } from './entities/SupervisorPayout';
 
 @Module({
   imports: [
@@ -74,7 +75,8 @@ import { Account } from './entities/Accounts';
           WorkerPayout,
           WorkerScoreHistory,
           WorkerType,
-          Account
+          Account,
+          SupervisorPayout
         ],
         synchronize: false,
         logging: true,

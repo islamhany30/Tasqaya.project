@@ -76,8 +76,20 @@
 
       <button onclick='submitLink()'>Update & Notify Workers</button>
 
+<<<<<<< HEAD
       <div id='message'></div>
     </div>
+=======
+        try {
+            // منادي الـ Controller اللي عملناه في الـ NestJS
+            const response = await fetch(`/api/supervisor/${taskId}/whatsapp-link`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ link: link }),
+        });
+>>>>>>> dd6fd49b325665cb6706d10d15b5d1e8ddcaa7f8
 
     <script>
       async function submitLink() { const link = document.getElementById('groupLink').value; const msgDiv =

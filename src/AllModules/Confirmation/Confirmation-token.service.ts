@@ -14,6 +14,8 @@ import { ConfirmationToken } from '../../entities/confirmationToken';
 import { TaskWorker } from '../../entities/TaskWorker';
 import { MailService } from '../../Mail/MailService';
 import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum';
+import { Task } from 'src/entities/Task';
+import { Worker } from 'src/entities/Worker';
 
 @Injectable()
 export class ConfirmationTokenService {
@@ -110,7 +112,7 @@ export class ConfirmationTokenService {
     }
   }
 
-  private async sendConfirmationEmail(worker: any, task: any, token: string) {
+  private async sendConfirmationEmail(worker: Worker, task: Task, token: string) {
     if (!worker.email) throw new BadRequestException(`Worker #${worker.id} has no email`);
 
     const yesUrl = `${this.baseUrl}/api/confirm/YES/${token}`;
@@ -118,14 +120,14 @@ export class ConfirmationTokenService {
 
     await this.mailService.sendMail({
       to: worker.email,
-      subject: `Task Confirmation Required – ${task.name}`,
+      subject: `Task Confirmation Required – ${task.eventName}`,
       html: `
         <div style="font-family: Arial; padding:20px">
           <h2>Task Confirmation Required</h2>
-          <p>Hello ${worker.name},</p>
+          <p>Hello ${worker.fullName},</p>
           <p>You have been assigned to:</p>
           <ul>
-            <li><b>Task:</b> ${task.name}</li>
+            <li><b>Task:</b> ${task.eventName}</li>
             <li><b>Location:</b> ${task.location}</li>
             <li><b>Start:</b> ${new Date(task.startDate).toLocaleString()}</li>
           </ul>

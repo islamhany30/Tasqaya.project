@@ -28,6 +28,7 @@ import { TaskWorker } from '../../entities/TaskWorker';
 import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { JobPost } from '../../entities/JobPost';
 import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
+import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
 
 @Injectable()
 export class TaskService {
@@ -581,8 +582,6 @@ export class TaskService {
 
     return { success: true, message: 'Link updated and workers notified' };
   }
-
-  // task.service.ts
 
   async getConfirmedWorkers(taskId: number, companyId: number) {
     const task = await this.taskRepo.findOne({
