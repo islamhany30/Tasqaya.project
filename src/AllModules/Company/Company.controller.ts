@@ -149,7 +149,6 @@ export class CompanyController {
     return { count: tasks.length, tasks };
   }
 
-  // BUG FIX 1: كانت متعرفة مرتين — اتشالت النسخة التانية (getPendingTasks) وفضلت الأولى بس
   @Get('tasks/pending')
   @UseGuards(JwtAccountAuthGuard)
   async getPending(@Req() req) {

@@ -138,6 +138,8 @@ export class ConfirmationResponseService {
 
   if (confirmedWorkersCount === task.requiredWorkers) {
     task.requiredWorkerStatus = requiredWorkersStatusEnum.COMPLETED;
+    await this.taskRepo.save(task);
+
     for (const ts of task.supervisors) {
       await this.mailService.sendMail({
         to: ts.supervisor.email,

@@ -17,10 +17,10 @@ export class Attendance {
   worker: Worker;
 
   @Column({ type: 'datetime', nullable: true })
-  checkInTime: Date;
+  checkInTime: Date | null;
 
   @Column({ type: 'datetime', nullable: true })
-  checkOutTime: Date;
+  checkOutTime: Date | null;
 
   @Column({ 
     type:"enum",
@@ -28,6 +28,6 @@ export class Attendance {
    })
   status: AttendanceStatusEnum; 
 
-  @Column({ type: 'longblob', nullable: true })
-  excelFile: Buffer;
+  @Column({ type: 'date' })
+  attendanceDate: Date;
 }

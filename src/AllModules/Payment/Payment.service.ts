@@ -21,7 +21,6 @@ export class PaymentService {
 validatePaymobHmac(hmacFromUrl: string, payload: any): boolean {
   const secureHash = process.env.PAYMOB_HMAC_SECRET || 'YOUR_PAYMOB_HMAC_SECRET';
 
-  // fields بالترتيب الرسمي حسب Paymob docs
   const keys = [
     'amount_cents',
     'created_at',
@@ -98,7 +97,7 @@ async processSuccessfulPayment(
   async getCompanyInvoices(companyId: number): Promise<Payment[]> {
   return await this.paymentRepo.find({
     where: { company: { id: companyId } },
-    relations: ['task'], // BUG FIX: كان 'taskId' وده غلط — الـ relation اسمها 'task'
+    relations: ['task'], 
     select: {
       id: true,
       totalAmount: true,
@@ -118,7 +117,7 @@ async processSuccessfulPayment(
       id: paymentId, 
       company: { id: companyId } 
     },
-    relations: ['task'], // BUG FIX: كان 'taskId' وده غلط — الـ relation اسمها 'task'
+    relations: ['task'], 
   });
 
   if (!payment) {
@@ -151,22 +150,6 @@ async processSuccessfulPayment(
   };
   }
 
-  async applyLateFees() {
-    const fiveDaysAgo = new Date();
-    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
-
-    const lateInvoices = await this.paymentRepo.createQueryBuilder('p')
-      .innerJoinAndSelect('p.taskId', 't')
-      .where('p.status = :status', { status: PaymentStatusEnum.PENDING })
-      .andWhere('t.endDate < :deadline', { deadline: fiveDaysAgo })
-      .getMany();
-
-    for (const inv of lateInvoices) {
-      inv.totalAmount = Number(inv.totalAmount) + 500;
-      await this.paymentRepo.save(inv);
-    }
-  }
-
   async initiatePayment(
     paymentId: number,
     companyId: number,
@@ -180,7 +163,7 @@ async processSuccessfulPayment(
     // 1️⃣ جلب بيانات الفاتورة
     const payment = await this.paymentRepo.findOne({
       where: { id: paymentId, company: { id: companyId } },
-      relations: ['taskId', 'company'],
+      relations: ['task', 'company'],
     });
 
     if (!payment) {

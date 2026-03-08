@@ -22,6 +22,7 @@ import { TaskWorker } from '../../entities/TaskWorker';
 import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { JobPost } from '../../entities/JobPost';
 import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
+import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
 
 @Injectable()
 export class TaskService {
@@ -583,8 +584,6 @@ async saveWhatsAppLinkAndNotify(taskId: number, link: string) {
   return { success: true, message: 'Link updated and workers notified' };
 }
 
-// task.service.ts
-
 async getConfirmedWorkers(taskId: number, companyId: number) {
   const task = await this.taskRepo.findOne({
     where: { 
@@ -623,4 +622,6 @@ private async createJobPostForTask(task: Task) {
   });
   return await this.jobPostRepo.save(jobPost);
 }
+
+
 }

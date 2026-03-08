@@ -1,8 +1,8 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { TaskSupervisor } from './TaskSupervisor';
-import { Admin } from './Admin';
 import { Exclude } from 'class-transformer';
 import { Account } from './Accounts';
+import { SupervisorPayout } from './SupervisorPayout';
 
 @Entity('supervisors')
 export class Supervisor {
@@ -72,6 +72,8 @@ export class Supervisor {
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 
+  @OneToMany(() => SupervisorPayout, sp => sp.supervisor)
+  payouts: SupervisorPayout[];
 
   @OneToMany(() => TaskSupervisor, ts => ts.supervisor, { onDelete: 'CASCADE' })
   taskAssignments: TaskSupervisor[];

@@ -14,6 +14,7 @@ import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
 import { GenderEnum } from '../Enums/gender-enum';
 import { requiredWorkersStatusEnum } from '../Enums/required-workers.enum';
+import { SupervisorPayout } from './SupervisorPayout';
 
 @Entity('tasks')
 export class Task {
@@ -49,6 +50,9 @@ export class Task {
   @ManyToOne(() => WorkerLevel, wl => wl.tasks, { onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'workerLevelId' })
   workerLevel: WorkerLevel;
+
+  @OneToMany(() => SupervisorPayout, sp => sp.task)
+  supervisorPayouts: SupervisorPayout[];
 
   @Column({
   type: 'enum',

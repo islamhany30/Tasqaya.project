@@ -14,6 +14,7 @@ import {
   ParseIntPipe,
   Render,
   Param,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
@@ -28,6 +29,7 @@ import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
 import { TaskService } from 'src/AllModules/Task/Task.service';
 import { AdminAuthGuard } from 'src/Auth/Auth.roles';
+import { TaskStatusEnum } from 'src/Enums/task-status.enum';
 
 @Controller('api/supervisor')
 export class SupervisorController {
@@ -120,5 +122,44 @@ export class SupervisorController {
   @Patch(':taskId/whatsapp-link')
   async updateWhatsAppLink(@Param('taskId', ParseIntPipe) taskId: number, @Body('link') link: string) {
     return await this.taskService.saveWhatsAppLinkAndNotify(taskId, link);
+  }
+
+  @Post(':taskId/attendance')
+  @UseGuards(JwtAccountAuthGuard)
+  @UseInterceptors(FileInterceptor('file', {
+    fileFilter: (req, file, callback) => {
+      if (!file.originalname.match(/\.(xlsx|xls)$/)) {
+        return callback(
+          new BadRequestException('Only Excel files (.xlsx, .xls) are allowed'),
+          false,
+        );
+      }
+      callback(null, true);
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  }))
+  async uploadAttendance(
+    @Param('taskId', ParseIntPipe) taskId: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    if (!file) throw new BadRequestException('Excel file is required');
+    const supervisorId = req.user.sub;
+    return this.supervisorService.uploadAttendance(taskId, supervisorId, file);
+  }
+
+  @Get('dashboard')
+  @UseGuards(JwtAccountAuthGuard)
+  async getDashboard(@Req() req: any) {
+    return this.supervisorService.getDashboard(Number(req.user.sub));
+  }
+
+  @Get('tasks')
+  @UseGuards(JwtAccountAuthGuard)
+  async getMyTasks(
+    @Req() req: any,
+    @Query('status') status?: TaskStatusEnum,
+  ) {
+    return this.supervisorService.getMyTasks(Number(req.user.sub), status);
   }
 }
