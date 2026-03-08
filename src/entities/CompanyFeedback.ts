@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { Task } from './Task';
 import { Company } from './Company';
-import { RatingEnum } from 'src/Enums/Rating.enum';
+import { RatingEnum } from '../Enums/Rating.enum';
 
 @Entity('company_feedback')
 export class CompanyFeedback {

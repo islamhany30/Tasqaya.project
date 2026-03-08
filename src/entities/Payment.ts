@@ -1,7 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, OneToOne } from 'typeorm';
 import { Task } from './Task';
 import { Company } from './Company';
-import { PaymentStatusEnum } from 'src/Enums/payment-status.enum';
+import { PaymentStatusEnum } from '../Enums/payment-status.enum';
 
 @Entity('payments')
 export class Payment {

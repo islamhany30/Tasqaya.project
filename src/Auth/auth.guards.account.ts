@@ -1,29 +1,18 @@
 import {
   CanActivate,
   ExecutionContext,
-  Injectable,
-  UnauthorizedException,
   ForbiddenException,
+  Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Account } from '../entities/Accounts';
 import { DataSource } from 'typeorm';
 import { Request } from 'express';
-import { UserRole } from '../Enums/User.role';
-import { Company } from '../entities/Company';
-import { Admin } from '../entities/Admin';
-import { Supervisor } from '../entities/Supervisor';
-import { Worker } from '../entities/Worker';
 
 @Injectable()
-export class JwtRegisterAuthGuard implements CanActivate {
-  private readonly entityMap = {
-    [UserRole.ADMIN]: Admin,
-    [UserRole.WORKER]: Worker,
-    [UserRole.SUPERVISOR]: Supervisor,
-    [UserRole.COMPANY]: Company,
-  };
-
+export class JwtAccountAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
@@ -40,30 +29,31 @@ export class JwtRegisterAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
-      });
-
+      const payload = await this.jwtService.verifyAsync(token);
       const { sub, role } = payload;
 
-      const targetEntity = this.entityMap[role];
-
-      if (!targetEntity) {
-        throw new UnauthorizedException('Invalid role identified in token');
-      }
-
-      const account = await this.dataSource.getRepository(targetEntity).findOne({ where: { id: sub } });
+      const roleKey = role.toLowerCase();
+      const account = await this.dataSource.getRepository(Account).findOne({
+        where: { id: sub },
+        relations: [roleKey],
+      });
 
       if (!account) {
         throw new NotFoundException('Account not found');
       }
 
-      if ((account as any).isActive === false) {
+      if (account.isActive === false) {
         throw new ForbiddenException('Your account is deactivated!');
       }
 
-      // إرفاق الـ payload بالطلب لاستخدامه في الـ Controller
-      request['user'] = payload;
+      const profile = account[roleKey];
+
+      request['user'] = {
+        sub: profile.id,
+        role: account.role,
+        email: account.email,
+        id: account.id,
+      };
 
       return true;
     } catch (error) {

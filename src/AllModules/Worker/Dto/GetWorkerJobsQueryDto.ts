@@ -1,6 +1,6 @@
 import { IsOptional, IsInt, IsEnum, IsArray, IsDateString, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import { GenderEnum } from 'src/Enums/gender.enum';
+import { GenderEnum } from 'src/Enums/gender-enum';
 import { PaginationDto } from './PaginationDto';
 
 export class GetWorkerJobsQueryDto extends PaginationDto {
@@ -27,7 +27,9 @@ export class GetWorkerJobsQueryDto extends PaginationDto {
   keyword?: string;
 
   @IsOptional()
-  @IsEnum(['publishedAt', 'deadline', 'startDate'], { message: "sortBy must be one of: 'publishedAt', 'deadline', 'startDate'" })
+  @IsEnum(['publishedAt', 'deadline', 'startDate'], {
+    message: "sortBy must be one of: 'publishedAt', 'deadline', 'startDate'",
+  })
   sortBy: 'publishedAt' | 'deadline' | 'startDate' = 'publishedAt';
 
   @IsOptional()

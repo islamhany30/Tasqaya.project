@@ -18,14 +18,16 @@ import { SystemConfig } from '../../entities/SystemConfig';
 import { CompanyFeedback } from '../../entities/CompanyFeedback';
 import { CreateFeedbackDto } from '../Company/Dto/create-feedback.dto';
 import { PaymentStatusEnum } from '../../Enums/payment-status.enum';
-import { WorkerType } from 'src/entities/WorkerType';
-import { TaskWorkerType } from 'src/entities/TaskWorkerType';
-import { Payment } from 'src/entities/Payment';
-import { WorkerConfirmationStatusEnum } from 'src/Enums/worker-confirmation.enum';
-import { MailService } from 'src/Mail/MailService';
-import { TaskSupervisor } from 'src/entities/TaskSupervisor';
-import { TaskWorker } from 'src/entities/TaskWorker';
-import { requiredWorkersStatusEnum } from 'src/Enums/required-workers.enum';
+import { WorkerType } from '../../entities/WorkerType';
+import { TaskWorkerType } from '../../entities/TaskWorkerType';
+import { Payment } from '../../entities/Payment';
+import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum';
+import { MailService } from '../../Mail/MailService';
+import { TaskSupervisor } from '../../entities/TaskSupervisor';
+import { TaskWorker } from '../../entities/TaskWorker';
+import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
+import { JobPost } from '../../entities/JobPost';
+import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
 
 @Injectable()
 export class TaskService {
@@ -35,6 +37,8 @@ export class TaskService {
 
     @InjectRepository(WorkerLevel)
     private readonly levelRepo: Repository<WorkerLevel>,
+    @InjectRepository(JobPost)
+    private readonly jobPostRepo: Repository<JobPost>,
     @InjectRepository(SystemConfig)
     private readonly systemconfig: Repository<SystemConfig>,
     @InjectRepository(CompanyFeedback)
@@ -53,16 +57,13 @@ export class TaskService {
     private readonly paymentService: PaymentService,
     private readonly mailService: MailService,
   ) {}
-
   async createTaskByCompany(dto: CreateTaskDto, companyId: number) {
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
     const today = new Date();
 
     const minStartDate = new Date();
-
     minStartDate.setDate(today.getDate() + 7);
-
     if (startDate < minStartDate) {
       throw new BadRequestException('StartDate must be at least 7 days from today');
     }
@@ -112,7 +113,6 @@ export class TaskService {
       requiredWorkers: dto.requiredWorkers,
       hasUniform: dto.hasUniform,
       uniformDescription: dto.uniformDescription,
-      genders: dto.gender,
 
       company: { id: companyId },
       workerLevel: levelData,
@@ -121,6 +121,8 @@ export class TaskService {
       supervisingFees: totalSupervisorsCost,
       platformFee: platformFee,
       totalCost: totalCost,
+      genders: dto.gender,
+
       approvalStatus: TaskApprovalStatusEnum.PENDING,
       status: TaskStatusEnum.UNAPPROVED,
     });
@@ -172,6 +174,8 @@ export class TaskService {
     await this.taskRepo.save(task);
 
     await this.paymentService.createInitialInvoice(task, companyId);
+
+    await this.createJobPostForTask(task);
 
     return {
       message: 'Task approved successfully.',
@@ -606,5 +610,14 @@ export class TaskService {
       fullName: tw.worker.fullName,
       profilePicture: tw.worker.profileImage || 'default-avatar-url',
     }));
+  }
+
+  private async createJobPostForTask(task: Task) {
+    const jobPost = this.jobPostRepo.create({
+      task: { id: task.id },
+      maxAllowedWorkers: task.requiredWorkers,
+      status: JobPostStatusEnum.OPEN,
+    });
+    return await this.jobPostRepo.save(jobPost);
   }
 }

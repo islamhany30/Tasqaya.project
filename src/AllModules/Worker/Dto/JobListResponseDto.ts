@@ -1,4 +1,4 @@
-import { GenderEnum } from 'src/Enums/gender.enum';
+import { GenderEnum } from 'src/Enums/gender-enum';
 import { JobPostStatusEnum } from 'src/Enums/job-post-status.enum';
 
 export class JobListResponseDto {

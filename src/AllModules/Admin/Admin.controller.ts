@@ -16,98 +16,55 @@ import {
 } from '@nestjs/common';
 
 import { AdminService } from './Admin.service';
-import { JwtAuthGuard } from '../../Auth/auth.guards';
-import { JwtRegisterAuthGuard } from '../../Auth/auth.guards.register';
+import { JwtAccountAuthGuard } from '../../Auth/auth.guards.account';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
 import * as path from 'path';
-
-import { CreateAdminDto } from './Dto/CreateAdmin.dto';
-import { LoginDto } from '../../Auth/Dto/Login.dto';
 import { UpdateAdminDto } from './Dto/UpdateAdmin.dto';
 import { ChangeAccountStatusDto } from './Dto/ChangeAccountStatus.dto';
-
 import { AdminAuthGuard } from '../../Auth/Auth.roles';
-import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
-import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
-import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
-import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 
 @Controller('api/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
-  @Post('register')
-  public registerAdmin(@Body() dto: CreateAdminDto) {
-    return this.adminService.register(dto);
-  }
+  // ================= Routes for Admin Account =================
 
-  @UseGuards(JwtRegisterAuthGuard)
-  @Post('verify')
-  async verify(@Body() dto: VerifyEmailDto, @Req() req) {
-    return this.adminService.verifyAdmin(dto.VERIFICATIONCODE, req.user.sub);
-  }
-
-  @UseGuards(JwtRegisterAuthGuard)
-  @Post('resend-verification')
-  async resendVerification(@Req() req) {
-    return this.adminService.resendVerification(req.user.sub);
-  }
-
-  @Post('login')
-  login(@Body() loginDto: LoginDto) {
-    return this.adminService.login(loginDto);
-  }
-
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('change-password')
   async changePassword(@Req() req, @Body() dto: ChangePasswordDto) {
     return this.adminService.changePassword(req.user.sub, dto);
   }
 
-  @Post('forgot-password')
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.adminService.forgotPassword(dto);
-  }
-
-  @Post('verify-reset-code')
-  async verifyResetCode(@Body() dto: VerifyResetCodeDto) {
-    return this.adminService.verifyResetCode(dto);
-  }
-
-  @Patch('reset-password')
-  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
-    return this.adminService.resetPassword(resetPasswordDto);
-  }
-
+  @UseGuards(JwtAccountAuthGuard)
   @Get('get-all-admins')
   async getAllAdmins() {
     return this.adminService.getAdmins();
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Get('get-admin-by-id')
   async getAdminById(@Req() req) {
     return this.adminService.getAdminById(req.user.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('edit-profile')
   async editProfile(@Req() req, @Body() updateDto: UpdateAdminDto) {
     return this.adminService.editProfile(req.user.sub, updateDto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Delete('delete-account')
   async deleteAccount(@Req() req, @Body() dto: DeactivateAccountDto) {
     return this.adminService.deleteAccount(req.user.sub, dto);
   }
 
   @Put('upload-profile-image')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -131,8 +88,7 @@ export class AdminController {
     return this.adminService.updateProfileImage(Number(req.user.sub), image.path);
   }
 
-  //~~~~~~~~~~~~~~~~~~~Restricted actions only by ADMIN~~~~~~~~~~~~~~~~~~~~~~~~~
-
+  // ================= Routes restricted to Admin Role =================
   @UseGuards(AdminAuthGuard)
   @Patch('manage/company/:id/status')
   async changeCompanyStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {

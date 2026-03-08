@@ -19,19 +19,16 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
 import * as path from 'path';
-import { JwtAuthGuard } from '../../Auth/auth.guards';
-import { JwtRegisterAuthGuard } from '../../Auth/auth.guards.register';
+import { JwtAccountAuthGuard } from '../../Auth/auth.guards.account';
 import { SupervisorService } from './Supervisor.service';
 import { CreateSupervisorDto } from './Dto/CreateSupervisor.dto';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
-import { LoginDto } from 'src/Auth/Dto/Login.dto';
-import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
-import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
-import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
 import { TaskService } from 'src/AllModules/Task/Task.service';
+import { AdminAuthGuard } from 'src/Auth/Auth.roles';
+
 @Controller('api/supervisor')
 export class SupervisorController {
   constructor(
@@ -39,75 +36,57 @@ export class SupervisorController {
     private readonly taskService: TaskService,
   ) {}
 
+  // ================= Register / Verification routes =================
   @Post('register')
   async registerSupervisor(@Body() dto: CreateSupervisorDto) {
     return this.supervisorService.register(dto);
   }
 
-  @UseGuards(JwtRegisterAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Post('verify')
   async verifySupervisor(@Body() dto: VerifyEmailDto, @Req() req: any) {
     return this.supervisorService.verifySupervisor(dto.VERIFICATIONCODE, req.user.sub);
   }
 
-  @UseGuards(JwtRegisterAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Post('resend-verification')
   async resendVerification(@Req() req: any) {
     return this.supervisorService.resendVerification(req.user.sub);
   }
 
-  @Post('login')
-  async login(@Body() dto: LoginDto) {
-    return this.supervisorService.login(dto);
-  }
-
-  @Post('forgot-password')
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.supervisorService.forgotPassword(dto);
-  }
-
-  @Post('verify-reset-code')
-  async verifyResetCode(@Body() dto: VerifyResetCodeDto) {
-    return this.supervisorService.verifyResetCode(dto);
-  }
-
-  @Patch('reset-password')
-  async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.supervisorService.resetPassword(dto);
-  }
-
-  @UseGuards(JwtAuthGuard)
+  // ================= Authenticated routes with JwtAccountAuthGuard =================
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('change-password')
-  async changePasswors(@Req() req: any, @Body() dto: ChangePasswordDto) {
+  async changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
     return this.supervisorService.changePassword(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AdminAuthGuard)
   @Patch('deactivate-account')
   async deactivateAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.supervisorService.deactivateAccount(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Delete('delete-account')
   async deleteAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.supervisorService.deleteAccount(Number(req.user.sub), dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Get('profile')
   async getProfile(@Req() req: any) {
     return this.supervisorService.getSupervisorById(Number(req.user.sub));
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('edit-profile')
   async editProfile(@Req() req: any, @Body() dto: updateSupervisorDto) {
     return this.supervisorService.editProfile(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Put('profile-image')
+  @UseGuards(JwtAccountAuthGuard)
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({
@@ -131,6 +110,7 @@ export class SupervisorController {
     return this.supervisorService.updateProfileImage(Number(req.user.sub), image.path);
   }
 
+  // ================= Task WhatsApp links =================
   @Get(':taskId/update-link')
   @Render('update-whatsapp')
   getUpdatePage(@Param('taskId', ParseIntPipe) taskId: number) {

@@ -16,7 +16,7 @@ import {
 import { Type } from 'class-transformer';
 // استيراد الـ Enums المحدثة
 import { WorkerTypeEnum } from '../../../Enums/worker-type.enum'; //
-import { GenderEnum } from '../../../Enums/gender.enum'; //
+import { GenderEnum } from '../../../Enums/gender-enum'; //
 import { WorkerLevelEnum } from '../../../Enums/worker-level.enum'; //
 
 export class CreateTaskDto {

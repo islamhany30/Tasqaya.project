@@ -34,6 +34,7 @@ import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
 import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
 import { WorkerType } from './entities/WorkerType';
+import { Account } from './entities/Accounts';
 
 @Module({
   imports: [
@@ -73,8 +74,9 @@ import { WorkerType } from './entities/WorkerType';
           WorkerPayout,
           WorkerScoreHistory,
           WorkerType,
+          Account
         ],
-        synchronize: true,
+        synchronize: false,
         logging: true,
       }),
     }),

@@ -1,11 +1,17 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { Request } from 'express';
-import { UserRole } from '../Enums/User.role';
-
+import { Account } from 'src/entities/Accounts';
 import { DataSource } from 'typeorm';
-import { NotFoundException } from '@nestjs/common';
+import { Request } from 'express';
 import { Admin } from '../entities/Admin';
+
 @Injectable()
 export class AdminAuthGuard implements CanActivate {
   constructor(
@@ -24,23 +30,39 @@ export class AdminAuthGuard implements CanActivate {
     const token = authHeader.split(' ')[1];
 
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: process.env.JWT_SECRET,
-      });
+      // فك التوكن
+      const payload = await this.jwtService.verifyAsync(token);
+      const { sub, role } = payload;
 
-      // ← check role first before hitting the DB
-      if (payload.role !== UserRole.ADMIN) {
+      // التأكد من أن الدور Admin
+      if (role !== 'ADMIN') {
         throw new ForbiddenException('Access denied: Admins only');
       }
 
-      // ← then verify the account is active and verified
-      const account = await this.dataSource.getRepository(Admin).findOne({ where: { id: payload.sub } });
+      // جلب بيانات الحساب والعلاقة مع Admin
+      const account = await this.dataSource.getRepository(Account).findOne({
+        where: { id: sub },
+        relations: ['admin'], // اسم العلاقة مع جدول Admin
+      });
 
-      if (!account) throw new NotFoundException('Account not found');
-      if (!account.isActive) throw new ForbiddenException('Your account is deactivated!');
-      if (!account.isVerified) throw new ForbiddenException('Your account is not verified!');
+      if (!account) {
+        throw new NotFoundException('Admin account not found');
+      }
 
-      request['user'] = payload;
+      if (!account.isActive) {
+        throw new ForbiddenException('This admin account is deactivated!');
+      }
+
+      const profile = account.admin;
+
+      // إرفاق الداتا بالـ request بنفس طريقة JwtAccountAuthGuard
+      request['user'] = {
+        sub: profile.id,
+        role: account.role,
+        email: account.email,
+        id: account.id,
+      };
+
       return true;
     } catch (error) {
       if (error instanceof ForbiddenException || error instanceof NotFoundException) throw error;

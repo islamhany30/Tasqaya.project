@@ -17,9 +17,9 @@ import {
 } from '@nestjs/common';
 import { WorkerService } from './Worker.service';
 import { CreateWorkerDto } from './Dto/CreateWorker.dto';
-import { JwtRegisterAuthGuard } from 'src/Auth/auth.guards.register';
+// import { JwtRegisterAuthGuard } from 'src/Auth/auth.guards.register';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
-import { JwtAuthGuard } from 'src/Auth/auth.guards';
+import { JwtAccountAuthGuard } from 'src/Auth/auth.guards.account';
 import { LoginDto } from 'src/Auth/Dto/Login.dto';
 import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
 import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
@@ -45,13 +45,13 @@ export class WorkerController {
   }
 
   @Post('verify')
-  @UseGuards(JwtRegisterAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   async verify(@Body() dto: VerifyEmailDto, @Req() req: any) {
     return this.workerService.verifyWorker(dto.VERIFICATIONCODE, req.user.sub);
   }
 
   @Post('resend-verification')
-  @UseGuards(JwtRegisterAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   async resendVerification(@Req() req: any) {
     return this.workerService.resendVerification(req.user.sub);
   }
@@ -76,37 +76,37 @@ export class WorkerController {
     return this.workerService.resetPassword(dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('change-password')
   async changePasswors(@Req() req: any, @Body() dto: ChangePasswordDto) {
     return this.workerService.changePassword(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('deactivate-account')
   async deactivateAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.workerService.deactivateAccount(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Delete('delete-account')
   async deleteAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.workerService.deleteAccount(Number(req.user.sub), dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Get('profile')
   async getProfile(@Req() req: any) {
     return this.workerService.getWorkerById(req.user.sub);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('edit-profile')
   async editProfile(@Req() req: any, @Body() dto: UpdateWorkerDto) {
     return this.workerService.editProfile(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Put('profile-image')
   @UseInterceptors(
     FileInterceptor('image', {
@@ -133,25 +133,25 @@ export class WorkerController {
 
   // ==================== JOB BROWSING ENDPOINTS ====================
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Get('job-posts')
   async getAvailableJobs(@Query() query: GetWorkerJobsQueryDto, @Req() req: any) {
     return this.workerService.getAvailableJobs(req.user.sub, query);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Post('apply')
   async applyForJob(@Body() dto: CreateApplicationDto, @Req() req: any) {
     return this.workerService.applyForJob(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Get('applications')
   async getMyApplications(@Query() query: PaginationDto, @Req() req: any) {
     return this.workerService.getMyApplications(req.user.sub, query);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Delete('applications/:applicationId')
   async withdrawApplication(@Param('applicationId', ParseIntPipe) applicationId: number, @Req() req: any) {
     return this.workerService.withdrawApplication(applicationId, req.user.sub);

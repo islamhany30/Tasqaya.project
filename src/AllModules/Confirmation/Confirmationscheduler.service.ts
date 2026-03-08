@@ -43,7 +43,7 @@ export class ConfirmationSchedulerService {
         status: JobPostStatusEnum.CLOSED,
         task: { startDate: Between(windowStart, windowEnd) },
       },
-      relations: ['taskId'],
+      relations: ['id'],
     });
 
     if (!jobPosts.length) {

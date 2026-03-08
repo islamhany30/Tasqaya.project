@@ -25,7 +25,9 @@ async function bootstrap() {
   app.setBaseViewsDir(join(__dirname, '..', 'views'));
   app.setViewEngine('hbs');
 
-  await app.listen(port);
+  await app.listen(port); // Why? Because we want to start the server and listen for incoming requests on the specified port. The `app.listen(port)` method is what actually starts the NestJS application and allows it to handle HTTP requests. Without this line, the server would not be running and would not be able to respond to any requests.
+
+  console.log(app);
   console.log(`🚀 Server is running on http://localhost:${port} 🚀`);
 }
 bootstrap();

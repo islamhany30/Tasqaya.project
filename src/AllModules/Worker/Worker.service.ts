@@ -119,19 +119,23 @@ export class WorkerService implements IAuthUser {
   }
 
   async login(dto: { email: string; password: string }): Promise<any> {
-    return this.authService.login(dto.email, dto.password, this, UserRole.WORKER);
+    return this.authService.login(dto.email, dto.password);
   }
 
   async forgotPassword(dto: { email: string }): Promise<any> {
-    return this.authService.forgotPassword(dto.email, this);
+    return this.authService.forgotPassword(dto.email);
   }
 
   async verifyResetCode(dto: { email: string; code: string }): Promise<any> {
-    return this.authService.verifyResetCode(dto.email, dto.code, this);
+    const account = await this.authService['accountRepo'].findOne({ where: { email: dto.email } });
+    if (!account) throw new NotFoundException('User not found');
+    return this.authService.verifyResetCode(account.id, dto.code);
   }
 
   async resetPassword(dto: { email: string; newPassword: string }): Promise<any> {
-    return this.authService.resetPassword(dto.email, dto.newPassword, this);
+    const account = await this.authService['accountRepo'].findOne({ where: { email: dto.email } });
+    if (!account) throw new NotFoundException('User not found');
+    return this.authService.resetPassword(account.id, dto.newPassword);
   }
 
   async changePassword(supervisorId: number, dto: { oldPassword: string; newPassword: string }): Promise<any> {

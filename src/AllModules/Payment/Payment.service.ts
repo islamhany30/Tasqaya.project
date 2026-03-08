@@ -91,7 +91,7 @@ export class PaymentService {
   async getCompanyInvoices(companyId: number): Promise<Payment[]> {
     return await this.paymentRepo.find({
       where: { company: { id: companyId } },
-      relations: ['taskId'],
+      relations: ['task'], // BUG FIX: كان 'taskId' وده غلط — الـ relation اسمها 'task'
       select: {
         id: true,
         totalAmount: true,
@@ -111,7 +111,7 @@ export class PaymentService {
         id: paymentId,
         company: { id: companyId },
       },
-      relations: ['taskId'],
+      relations: ['task'], // BUG FIX: كان 'taskId' وده غلط — الـ relation اسمها 'task'
     });
 
     if (!payment) {
