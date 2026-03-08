@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { TaskSupervisor } from './TaskSupervisor';
 import { Admin } from './Admin';
 import { Exclude } from 'class-transformer';
+import { Account } from './Accounts';
 
 @Entity('supervisors')
 export class Supervisor {
@@ -71,10 +72,15 @@ export class Supervisor {
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 
-  @ManyToOne(() => Admin, (admin) => admin.workers, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'adminId' })
-  admin: Admin;
 
   @OneToMany(() => TaskSupervisor, ts => ts.supervisor, { onDelete: 'CASCADE' })
   taskAssignments: TaskSupervisor[];
+
+  // الربط الأساسي هنا
+  @OneToOne(() => Account, (account) => account.worker, { 
+    onDelete: 'CASCADE', // لو مسحت الـ Account، يتمسح الـ Worker أوتوماتيك
+    nullable: false      // مينفعش worker بدون account
+  })
+  @JoinColumn({ name: 'accountId' }) // ده العمود اللي هيتخزن فيه الـ ID بتاع الـ Account
+  account: Account;
 }

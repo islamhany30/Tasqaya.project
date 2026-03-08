@@ -106,24 +106,9 @@ export class AdminService implements IAuthUser {
     return this.authService.resendVerification(adminId, this);
   }
 
-  async login(dto: { email: string; password: string }) {
-    return this.authService.login(dto.email, dto.password, this, UserRole.ADMIN);
-  }
 
   async changePassword(adminId: number, dto: { oldPassword: string; newPassword: string }) {
     return this.authService.changePassword(adminId, dto.oldPassword, dto.newPassword, this);
-  }
-
-  async forgotPassword(dto: { email: string }) {
-    return this.authService.forgotPassword(dto.email, this);
-  }
-
-  async verifyResetCode(dto: { email: string; code: string }) {
-    return this.authService.verifyResetCode(dto.email, dto.code, this);
-  }
-
-  async resetPassword(dto: { email: string; newPassword: string }) {
-    return this.authService.resetPassword(dto.email, dto.newPassword, this);
   }
 
   //Hard delete

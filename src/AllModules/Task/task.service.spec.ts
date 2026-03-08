@@ -10,6 +10,7 @@ import { CompanyFeedback } from '../../entities/CompanyFeedback';
 import { WorkerType } from '../../entities/WorkerType';
 import { TaskWorkerType } from '../../entities/TaskWorkerType';
 import { Payment } from '../../entities/Payment';
+import { JobPost } from '../../entities/JobPost';
 import { MailService } from '../../Mail/MailService';
 import { PaymentService } from '../Payment/Payment.service';
 import {
@@ -34,6 +35,7 @@ describe('TaskService - Full Coverage', () => {
   let systemConfigRepo: any;
   let feedbackRepo: any;
   let paymentRepo: any;
+  let jobPostRepo: any;
   let paymentService: PaymentService;
   let mailService: MailService;
 
@@ -63,6 +65,7 @@ describe('TaskService - Full Coverage', () => {
         { provide: getRepositoryToken(WorkerType), useValue: mockRepoFactory() },
         { provide: getRepositoryToken(TaskWorkerType), useValue: mockRepoFactory() },
         { provide: getRepositoryToken(Payment), useValue: mockRepoFactory() },
+        { provide: getRepositoryToken(JobPost), useValue: mockRepoFactory() },
         {
           provide: PaymentService,
           useValue: { createInitialInvoice: jest.fn().mockResolvedValue({ id: 999 }) },
@@ -84,6 +87,7 @@ describe('TaskService - Full Coverage', () => {
     systemConfigRepo = module.get(getRepositoryToken(SystemConfig));
     feedbackRepo = module.get(getRepositoryToken(CompanyFeedback));
     paymentRepo = module.get(getRepositoryToken(Payment));
+    jobPostRepo = module.get(getRepositoryToken(JobPost));
     paymentService = module.get<PaymentService>(PaymentService);
     mailService = module.get<MailService>(MailService);
   });
@@ -147,6 +151,8 @@ describe('TaskService - Full Coverage', () => {
 
       const dto: any = {
         startDate: futureDate(8),
+        endDate: futureDate(10),
+        durationHoursPerDay: 4,
         requiredWorkers: 2,
         workerLevel: 'Junior',
         workerTypes: ['Security'],
@@ -163,7 +169,13 @@ describe('TaskService - Full Coverage', () => {
 
     it('should throw NotFoundException if worker level does not exist', async () => {
       levelRepo.findOne.mockResolvedValue(null);
-      const dto: any = { startDate: futureDate(8), workerLevel: 'Ghost' };
+      const dto: any = {
+        startDate: futureDate(8),
+        endDate: futureDate(10),
+        durationHoursPerDay: 4,
+        requiredWorkers: 5,
+        workerLevel: 'Ghost',
+      };
       await expect(service.createTaskByCompany(dto, 1)).rejects.toThrow(NotFoundException);
     });
 
@@ -209,6 +221,7 @@ describe('TaskService - Full Coverage', () => {
         id: 5,
         startDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
         totalCost: 5000,
+        requiredWorkers: 10,
       };
       taskRepo.findOne.mockResolvedValue(task);
 
@@ -220,6 +233,11 @@ describe('TaskService - Full Coverage', () => {
           approvalStatus: TaskApprovalStatusEnum.APPROVED,
           status: TaskStatusEnum.PENDING,
         }),
+      );
+      // createJobPostForTask بيتنادى fire-and-forget (بدون await)
+      // نتأكد إن الـ jobPostRepo.create اتنادى
+      expect(jobPostRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ status: expect.any(String) }),
       );
     });
 

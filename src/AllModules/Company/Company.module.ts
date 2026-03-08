@@ -5,11 +5,11 @@ import { MailModule } from 'src/Mail/Mail.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Company } from 'src/entities/Company';
 import { Task } from 'src/entities/Task';
-import { CompanyFeedback } from 'src/entities/CompanyFeedback';
+import { CompanyFeedback } from '../../entities/CompanyFeedback';
 import { CompanyController } from './Company.controller';
 import { CompanyService } from './Company.service';
 import { Module } from '@nestjs/common';
-import { Admin } from 'src/entities/Admin';
+import { Admin } from '../../entities/Admin';
 
 @Module({
   imports: [

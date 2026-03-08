@@ -20,6 +20,8 @@ import { MailService } from '../../Mail/MailService';
 import { TaskSupervisor } from '../../entities/TaskSupervisor';
 import { TaskWorker } from '../../entities/TaskWorker';
 import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
+import { JobPost } from '../../entities/JobPost';
+import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
 
 @Injectable()
 export class TaskService {
@@ -29,6 +31,8 @@ export class TaskService {
 
     @InjectRepository(WorkerLevel)
     private readonly levelRepo: Repository<WorkerLevel>,
+    @InjectRepository(JobPost)
+    private readonly jobPostRepo: Repository<JobPost>,
     @InjectRepository(SystemConfig)
     private readonly systemconfig: Repository<SystemConfig>,
     @InjectRepository(CompanyFeedback)
@@ -168,6 +172,8 @@ async approveTaskByCompany(taskId: number, companyId: number) {
 
     await this.paymentService.createInitialInvoice(task, companyId);
 
+    await this.createJobPostForTask(task);
+
     return {
       message: 'Task approved successfully.',
       taskId: task.id,
@@ -176,6 +182,7 @@ async approveTaskByCompany(taskId: number, companyId: number) {
 }
 
 async getCompanyApprovedTasks(companyId: number) {
+  
   return await this.taskRepo.find({
     where: { 
       company: { id: companyId },
@@ -608,4 +615,12 @@ async getConfirmedWorkers(taskId: number, companyId: number) {
   }));
 }
 
+private async createJobPostForTask(task: Task) {
+  const jobPost = this.jobPostRepo.create({
+    task: { id: task.id },
+    maxAllowedWorkers: task.requiredWorkers,
+    status: JobPostStatusEnum.OPEN,
+  });
+  return await this.jobPostRepo.save(jobPost);
+}
 }

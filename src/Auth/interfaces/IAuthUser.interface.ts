@@ -1,3 +1,5 @@
+import { EntityManager } from "typeorm";
+
 export interface IAuthUser {
   findByEmail(email: string): Promise<any>;
 
@@ -15,7 +17,7 @@ export interface IAuthUser {
 
   clearResetCode(userId: number): Promise<void>;
 
-  createUser(data: any): Promise<any>;
+  createUser(data: any, manager?: EntityManager): Promise<any>;
 
   deactivateUser(userId: number): Promise<any>;
 

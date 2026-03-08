@@ -4,9 +4,6 @@ import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
 import { Match } from '../../Decorators/Match.decorator';
 
 export class ResetPasswordDto {
-  @IsNotEmpty()
-  @IsEmail()
-  email: string;
 
   @IsNotEmpty()
   @IsString()

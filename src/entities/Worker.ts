@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, OneToMany, JoinColumn, OneToOne } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { WorkerLevel } from './WorkerLevel';
 import { Application } from './Application';
@@ -8,7 +8,8 @@ import { WorkerScoreHistory } from './WorkerScoreHistory';
 import { Admin } from './Admin';
 import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
-import { GenderEnum } from '../Enums/gender.enum';
+import { GenderEnum } from '../Enums/gender-enum';
+import { Account } from './Accounts';
 
 @Entity('workers')
 export class Worker {
@@ -84,6 +85,14 @@ export class Worker {
   @JoinColumn({ name: 'levelId' })
   level: WorkerLevel;
 
+  // الربط الأساسي هنا
+  @OneToOne(() => Account, (account) => account.worker, { 
+    onDelete: 'CASCADE', // لو مسحت الـ Account، يتمسح الـ Worker أوتوماتيك
+    nullable: false      // مينفعش worker بدون account
+  })
+  @JoinColumn({ name: 'accountId' }) // ده العمود اللي هيتخزن فيه الـ ID بتاع الـ Account
+  account: Account;
+
   @OneToMany(() => Application, (a) => a.worker, { onDelete: 'CASCADE' })
   applications: Application[];
 
@@ -98,12 +107,6 @@ export class Worker {
   })
   scoreHistory: WorkerScoreHistory[];
 
-  @ManyToOne(() => Admin, (admin) => admin.workers, {
-    nullable: true,
-    onDelete: 'SET NULL',
-  })
-  @JoinColumn({ name: 'adminId' })
-  admin: Admin;
 
   @Column({
     type: 'enum',

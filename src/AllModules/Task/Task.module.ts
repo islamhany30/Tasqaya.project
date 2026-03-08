@@ -16,6 +16,7 @@ import { ConfirmationToken } from 'src/entities/confirmationToken';
 import { MailModule } from 'src/Mail/Mail.module';
 import { TaskSupervisor } from 'src/entities/TaskSupervisor';
 import { TaskWorkerType } from 'src/entities/TaskWorkerType';
+import { JobPost } from 'src/entities/JobPost';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { TaskWorkerType } from 'src/entities/TaskWorkerType';
       CompanyFeedback,
       ConfirmationToken,
       TaskSupervisor,
+      JobPost,
       TaskWorkerType
     ]),
     PaymentModule,

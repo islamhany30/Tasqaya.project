@@ -1,76 +1,54 @@
 import { Controller, Body, Req, Post, Patch, Delete, Get, UseGuards } from '@nestjs/common';
 import { WorkerService } from './Worker.service';
 import { CreateWorkerDto } from './Dto/CreateWorker.dto';
-import { JwtRegisterAuthGuard } from 'src/Auth/auth.guards.register';
+import { JwtAccountAuthGuard } from '../../Auth/auth.guards.account';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
-import { JwtAuthGuard } from 'src/Auth/auth.guards';
-import { LoginDto } from 'src/Auth/Dto/Login.dto';
-import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
-import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
-import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
+import { AdminAuthGuard } from 'src/Auth/Auth.roles';
 
 @Controller('api/worker')
 export class WorkerController {
   constructor(private readonly workerService: WorkerService) {}
 
+  // ================= Register / Verification routes =================
   @Post('register')
   async registerWorker(@Body() dto: CreateWorkerDto) {
     return this.workerService.register(dto);
   }
 
   @Post('verify')
-  @UseGuards(JwtRegisterAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   async verify(@Body() dto: VerifyEmailDto, @Req() req: any) {
     return this.workerService.verifyWorker(dto.VERIFICATIONCODE, req.user.sub);
   }
 
   @Post('resend-verification')
-  @UseGuards(JwtRegisterAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   async resendVerification(@Req() req: any) {
     return this.workerService.resendVerification(req.user.sub);
   }
 
-  @Post('login')
-  async login(@Body() dto: LoginDto) {
-    return this.workerService.login(dto);
-  }
-
-  @Post('forgot-password')
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.workerService.forgotPassword(dto);
-  }
-
-  @Post('verify-reset-code')
-  async verifyResetCode(@Body() dto: VerifyResetCodeDto) {
-    return this.workerService.verifyResetCode(dto);
-  }
-
-  @Patch('reset-password')
-  async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.workerService.resetPassword(dto);
-  }
-
-  @UseGuards(JwtAuthGuard)
+  // ================= Authenticated routes with JwtAccountAuthGuard =================
+  @UseGuards(JwtAccountAuthGuard)
   @Patch('change-password')
-  async changePasswors(@Req() req: any, @Body() dto: ChangePasswordDto) {
+  async changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
     return this.workerService.changePassword(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(AdminAuthGuard)
   @Patch('deactivate-account')
   async deactivateAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.workerService.deactivateAccount(req.user.sub, dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Delete('delete-account')
   async deleteAccount(@Req() req: any, @Body() dto: DeactivateAccountDto) {
     return this.workerService.deleteAccount(Number(req.user.sub), dto);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAccountAuthGuard)
   @Get('profile')
   async getProfile(@Req() req: any) {
     return this.workerService.getWorkerById(req.user.sub);

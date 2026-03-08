@@ -6,9 +6,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
-import * as fs from 'fs';
 import { Worker } from 'src/entities/Worker';
 import { CreateWorkerDto } from './Dto/CreateWorker.dto';
 import { UserRole } from 'src/Enums/User.role';
@@ -38,9 +37,12 @@ export class WorkerService implements IAuthUser {
     }
   }
 
-  async createUser(data: Partial<Worker>): Promise<any> {
-    const admin = this.workerRepository.create(data);
-    return await this.workerRepository.save(admin);
+  async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
+  const repo = manager 
+    ? manager.getRepository(Worker) 
+    : this.workerRepository;
+  const company = repo.create(data);
+  return await repo.save(company);
   }
 
   async verifyUser(userId: number): Promise<void> {
@@ -106,21 +108,6 @@ export class WorkerService implements IAuthUser {
     return this.authService.resendVerification(workerId, this);
   }
 
-  async login(dto: { email: string; password: string }): Promise<any> {
-    return this.authService.login(dto.email, dto.password, this, UserRole.WORKER);
-  }
-
-  async forgotPassword(dto: { email: string }): Promise<any> {
-    return this.authService.forgotPassword(dto.email, this);
-  }
-
-  async verifyResetCode(dto: { email: string; code: string }): Promise<any> {
-    return this.authService.verifyResetCode(dto.email, dto.code, this);
-  }
-
-  async resetPassword(dto: { email: string; newPassword: string }): Promise<any> {
-    return this.authService.resetPassword(dto.email, dto.newPassword, this);
-  }
 
   async changePassword(supervisorId: number, dto: { oldPassword: string; newPassword: string }): Promise<any> {
     return this.authService.changePassword(supervisorId, dto.oldPassword, dto.newPassword, this);

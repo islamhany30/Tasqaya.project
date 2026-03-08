@@ -11,16 +11,10 @@ export class JobPost {
   @OneToOne(() => Task, t => t.jobPost, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
   task: Task;
-  
-  @ManyToOne(() => Admin, a => a.jopposts, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'adminId' })
-  admin: Admin;
+
 
   @Column({ type: 'datetime' })
   publishedAt: Date;
-
-  @Column({ type: 'datetime' })
-  deadline: Date;
 
   @Column()
   maxAllowedWorkers: number;
