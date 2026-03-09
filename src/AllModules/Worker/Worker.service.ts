@@ -23,6 +23,7 @@ import { JobPostStatusEnum } from 'src/Enums/job-post-status.enum';
 import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';
+import { TaskService } from '../Task/Task.service';
 
 @Injectable()
 export class WorkerService implements IAuthUser {
@@ -31,6 +32,7 @@ export class WorkerService implements IAuthUser {
     @InjectRepository(JobPost) private readonly jobPostRepository: Repository<JobPost>,
     @InjectRepository(Application) private readonly applicationRepository: Repository<Application>,
     @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
+    private readonly taskService: TaskService,
     private readonly authService: AuthService,
   ) {}
 
@@ -402,10 +404,18 @@ export class WorkerService implements IAuthUser {
     });
 
     if (applicationCount >= jobPost.maxAllowedWorkers * 2.5) {
-      //Close the job post then
-      jobPost.status = JobPostStatusEnum.CLOSED;
+      //Save the last application
+      const lastApplication = this.applicationRepository.create();
 
-      //Call The filterarion logic to select the best candidates based on the criteria and mark them as accepted while the rest as rejected
+      lastApplication.jobPost = jobPost;
+      lastApplication.worker = worker;
+      lastApplication.status = ApplicationStatusEnum.PENDING;
+      lastApplication.appliedAt = new Date();
+
+      await this.applicationRepository.save(lastApplication);
+
+      //Trigger the filter feature from task service
+      await this.taskService.filterJobPostWorkers(jobPost.id);
 
       //Throw exception message
       throw new BadRequestException('This job post has reached the maximum number of applications');

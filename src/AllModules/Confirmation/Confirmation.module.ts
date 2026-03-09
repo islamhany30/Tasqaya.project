@@ -11,13 +11,15 @@ import { Task } from '../../entities/Task';
 import { JobPost } from '../../entities/JobPost';
 import { MailService } from '../../Mail/MailService';
 import { ConfirmationProcessor } from './confirmation.processor';
+import { TaskModule } from '../Task/Task.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ConfirmationToken, TaskWorker, Task, JobPost]),
     BullModule.registerQueue({
-      name: 'confirmation',  
+      name: 'confirmation',
     }),
+    TaskModule,
   ],
   controllers: [ConfirmationController],
   providers: [
@@ -25,8 +27,8 @@ import { ConfirmationProcessor } from './confirmation.processor';
     ConfirmationSchedulerService,
     ConfirmationTokenService,
     MailService,
-    ConfirmationProcessor
+    ConfirmationProcessor,
   ],
-  exports: [ConfirmationResponseService, ConfirmationTokenService,ConfirmationSchedulerService],
+  exports: [ConfirmationResponseService, ConfirmationTokenService, ConfirmationSchedulerService],
 })
 export class ConfirmationModule {}

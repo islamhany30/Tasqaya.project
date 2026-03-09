@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailModule } from '../../Mail/Mail.module';
+import { TaskModule } from '../Task/Task.module';
 import { Company } from '../../entities/Company';
 import { Admin } from '../../entities/Admin';
 import { Task } from '../../entities/Task';
@@ -12,7 +13,12 @@ import { WorkerController } from './Worker.controller';
 import { WorkerService } from './Worker.service';
 
 @Module({
-  imports: [MailModule, AuthModule, TypeOrmModule.forFeature([Worker, Admin, Task, Company, JobPost, Application])],
+  imports: [
+    MailModule,
+    AuthModule,
+    TaskModule,
+    TypeOrmModule.forFeature([Worker, Admin, Task, Company, JobPost, Application]),
+  ],
   controllers: [WorkerController],
   providers: [WorkerService],
   exports: [WorkerService],

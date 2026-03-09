@@ -19,6 +19,7 @@ import { TaskWorkerType } from 'src/entities/TaskWorkerType';
 import { JobPost } from 'src/entities/JobPost';
 import { Attendance } from 'src/entities/Attendance';
 import { Worker } from 'src/entities/Worker';
+import { Application } from 'src/entities/Application';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { Worker } from 'src/entities/Worker';
       TaskWorkerType,
       Attendance,
       Worker,
+      Application,
     ]),
     PaymentModule,
     MailModule,

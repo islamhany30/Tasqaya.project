@@ -9,6 +9,8 @@ import { ConfirmationTokenService } from './Confirmation-token.service';
 import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum';
 import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum';
 import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
+import { LessThanOrEqual } from 'typeorm';
+import { TaskService } from '../Task/Task.service';
 
 @Injectable()
 export class ConfirmationSchedulerService {
@@ -25,6 +27,7 @@ export class ConfirmationSchedulerService {
     private readonly jobPostRepo: Repository<JobPost>,
 
     private readonly confirmationTokenService: ConfirmationTokenService,
+    private readonly taskService: TaskService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────
@@ -85,5 +88,29 @@ export class ConfirmationSchedulerService {
     }
 
     this.logger.log(`Task #${task.id}: Processed ${primaryWorkers.length} primary worker(s).`);
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async closeExpiredJobPostsAndFilter(): Promise<void> {
+    this.logger.log('⏰ Scanning for expired open JobPosts...');
+
+    const expiredJobPosts = await this.jobPostRepo.find({
+      where: {
+        status: JobPostStatusEnum.OPEN,
+        deadline: LessThanOrEqual(new Date()),
+      },
+      relations: ['task'],
+    });
+
+    if (!expiredJobPosts.length) return;
+
+    for (const jobPost of expiredJobPosts) {
+      try {
+        await this.taskService.filterJobPostWorkers(jobPost.id);
+        this.logger.log(`✅ Filtered Job Post #${jobPost.id}`);
+      } catch (err) {
+        this.logger.error(`❌ Failed for Job Post #${jobPost.id}: ${err.message}`);
+      }
+    }
   }
 }

@@ -29,6 +29,11 @@ import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { JobPost } from '../../entities/JobPost';
 import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
 import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
+import { Application } from '../../entities/Application';
+import { ApplicationStatusEnum } from '../../Enums/application-status.enum';
+import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum';
+
+import { Worker } from '../../entities/Worker';
 
 @Injectable()
 export class TaskService {
@@ -54,6 +59,8 @@ export class TaskService {
     private readonly taskSupervisorRepo: Repository<TaskSupervisor>,
     @InjectRepository(TaskWorker)
     private readonly taskWorkerRepo: Repository<TaskWorker>,
+    @InjectRepository(Application)
+    private readonly applicationRepo: Repository<Application>,
 
     private readonly paymentService: PaymentService,
     private readonly mailService: MailService,
@@ -623,5 +630,84 @@ export class TaskService {
       deadline,
     });
     return await this.jobPostRepo.save(jobPost);
+  }
+
+  async filterJobPostWorkers(jobPostId: number): Promise<void> {
+    const jobPost = await this.jobPostRepo.findOne({
+      where: { id: jobPostId },
+      relations: ['task'],
+    });
+
+    if (!jobPost) throw new NotFoundException('Job post not found');
+
+    if (jobPost.status === JobPostStatusEnum.CLOSED) return;
+
+    const task = jobPost.task;
+    const requiredWorkers = task.requiredWorkers;
+    const BACKUP_COUNT = 3;
+    const totalToSelect = requiredWorkers + 3;
+
+    //Filter by reliabilty rate first
+    const rankedApplications = await this.applicationRepo
+      .createQueryBuilder('app')
+      .innerJoinAndSelect('app.worker', 'worker')
+      .where('app.jobPostId = :jobPostId', { jobPostId })
+      .andWhere('app.status = :status', { status: ApplicationStatusEnum.PENDING })
+      .orderBy('worker.reliabilityRate', 'DESC')
+      .addOrderBy('app.appliedAt', 'ASC')
+      .addOrderBy('worker.score', 'DESC')
+      .addOrderBy('worker.completedTasks', 'DESC')
+      .getMany();
+
+    const selected = rankedApplications.slice(0, totalToSelect); // array of selected applications (including backups)
+    const rejected = rankedApplications.slice(totalToSelect);
+
+    //create TaskWorker records
+    const taskWorkerRecords: TaskWorker[] = selected.map((app, index) => {
+      const isPrimary = index < requiredWorkers; // index here is based on the ranked list, not the original applications array
+
+      const record = this.taskWorkerRepo.create({
+        task: { id: task.id } as Task,
+        worker: { id: app.worker.id } as Worker,
+        assignmentType: isPrimary ? AssignmentTypeEnum.PRIMARY : AssignmentTypeEnum.BACKUP,
+        backupOrder: isPrimary ? undefined : index - requiredWorkers + 1,
+        confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
+      });
+
+      return record;
+    });
+    await this.taskWorkerRepo.save(taskWorkerRecords);
+
+    //Update Application statuses
+    const primaryIds = selected.slice(0, requiredWorkers).map((a) => a.id);
+    const backupIds = selected.slice(requiredWorkers).map((a) => a.id);
+    const rejectedIds = rejected.map((a) => a.id);
+
+    if (primaryIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.ACCEPTED })
+        .whereInIds(primaryIds)
+        .execute();
+
+    if (backupIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.BACKUP })
+        .whereInIds(backupIds)
+        .execute();
+
+    if (rejectedIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.REJECTED })
+        .whereInIds(rejectedIds)
+        .execute();
+
+    //Close the job post
+    await this.jobPostRepo.update(jobPostId, { status: JobPostStatusEnum.CLOSED });
   }
 }
