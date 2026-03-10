@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn, UpdateDateColumn, OneToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { Company } from './Company';
 import { Worker } from './Worker';
@@ -52,13 +61,12 @@ export class Admin {
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 
-  @OneToOne(() => Account, (account) => account.worker, { 
+  @OneToOne(() => Account, (account) => account.admin, {
     onDelete: 'CASCADE', // لو مسحت الـ Account، يتمسح الـ Worker أوتوماتيك
-    nullable: false      // مينفعش worker بدون account
+    nullable: false, // مينفعش worker بدون account
   })
   @JoinColumn({ name: 'accountId' }) // ده العمود اللي هيتخزن فيه الـ ID بتاع الـ Account
   account: Account;
-
 
   @CreateDateColumn()
   createdAt: Date;

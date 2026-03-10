@@ -873,4 +873,47 @@ export class TaskService {
       },
     };
   }
+
+  async getJobPostApplicants(jobPostId: number): Promise<any> {
+    const jobPost = await this.jobPostRepo.findOne({ where: { id: jobPostId }, relations: ['task'] });
+
+    if (!jobPost) throw new NotFoundException(`Job post with ID: ${jobPostId} not found`);
+
+    const applications = await this.applicationRepo
+      .createQueryBuilder('app')
+      .innerJoinAndSelect('app.worker', 'worker')
+      .leftJoinAndSelect('worker.level', 'level')
+      .where('app.jobPostId = :jobPostId', { jobPostId })
+      .orderBy('worker.reliabilityRate', 'DESC')
+      .addOrderBy('app.appliedAt', 'ASC')
+      .getMany();
+
+    return {
+      message: 'Applicants fetched successfully',
+      data: {
+        jobPostId,
+        taskId: jobPost.task.id,
+        eventName: jobPost.task.eventName,
+        jobPostStatus: jobPost.status,
+        deadline: jobPost.deadline,
+        maxAllowedWorkers: jobPost.maxAllowedWorkers,
+        totalApplications: applications.length,
+        applicants: applications.map((app) => ({
+          applicationId: app.id,
+          status: app.status,
+          appliedAt: app.appliedAt,
+          worker: {
+            id: app.worker.id,
+            fullName: app.worker.fullName,
+            email: app.worker.email,
+            phone: app.worker.phone,
+            reliabilityRate: app.worker.reliabilityRate,
+            score: app.worker.score,
+            completedTasks: app.worker.completedTasks,
+            level: app.worker.level?.levelName || null,
+          },
+        })),
+      },
+    };
+  }
 }

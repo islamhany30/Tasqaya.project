@@ -72,16 +72,16 @@ export class Supervisor {
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 
-  @OneToMany(() => SupervisorPayout, sp => sp.supervisor)
+  @OneToMany(() => SupervisorPayout, (sp) => sp.supervisor)
   payouts: SupervisorPayout[];
 
-  @OneToMany(() => TaskSupervisor, ts => ts.supervisor, { onDelete: 'CASCADE' })
+  @OneToMany(() => TaskSupervisor, (ts) => ts.supervisor, { onDelete: 'CASCADE' })
   taskAssignments: TaskSupervisor[];
 
   // الربط الأساسي هنا
-  @OneToOne(() => Account, (account) => account.worker, { 
+  @OneToOne(() => Account, (account) => account.supervisor, {
     onDelete: 'CASCADE', // لو مسحت الـ Account، يتمسح الـ Worker أوتوماتيك
-    nullable: false      // مينفعش worker بدون account
+    nullable: false, // مينفعش worker بدون account
   })
   @JoinColumn({ name: 'accountId' }) // ده العمود اللي هيتخزن فيه الـ ID بتاع الـ Account
   account: Account;

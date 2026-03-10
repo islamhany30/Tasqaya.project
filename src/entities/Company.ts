@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, CreateDateColumn, OneToOne } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  OneToMany,
+  ManyToOne,
+  JoinColumn,
+  CreateDateColumn,
+  OneToOne,
+} from 'typeorm';
 import { Task } from './Task';
 import { CompanyFeedback } from './CompanyFeedback';
 import { Admin } from './Admin';
@@ -52,12 +61,10 @@ export class Company {
   @Column({ nullable: true, type: 'timestamp' })
   resetCodeExpiry: Date | null;
 
-
-
   // الربط الأساسي هنا
-  @OneToOne(() => Account, (account) => account.worker, { 
+  @OneToOne(() => Account, (account) => account.company, {
     onDelete: 'CASCADE', // لو مسحت الـ Account، يتمسح الـ Worker أوتوماتيك
-    nullable: false      // مينفعش worker بدون account
+    nullable: false, // مينفعش worker بدون account
   })
   @JoinColumn({ name: 'accountId' }) // ده العمود اللي هيتخزن فيه الـ ID بتاع الـ Account
   account: Account;
@@ -71,6 +78,6 @@ export class Company {
   @OneToMany(() => CompanyFeedback, (f) => f.company, { onDelete: 'CASCADE' })
   feedback: CompanyFeedback[];
 
-  @OneToMany(() => Payment, p => p.company)
+  @OneToMany(() => Payment, (p) => p.company)
   payments: Payment[];
 }

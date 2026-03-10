@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import { Admin } from '../../entities/Admin';
 import { AuthService } from '../../Auth/Auth.service';
 import { IAuthUser } from '../../Auth/interfaces/IAuthUser.interface';
@@ -41,10 +41,17 @@ export class AdminService implements IAuthUser {
     return bcrypt.compare(plainText, user.password);
   }
 
-  async createUser(data: Partial<Admin>): Promise<any> {
-    const admin = this.adminRepository.create(data);
-    return await this.adminRepository.save(admin);
+  async createUser(data: Partial<Admin>, manager?: EntityManager): Promise<any> {
+    const repo = manager ? manager.getRepository(Admin) : this.adminRepository;
+    const admin = repo.create(data);
+    return await repo.save(admin);
   }
+
+  // async createUser(data: Partial<Company>, manager?: EntityManager): Promise<any> {
+  //     const repo = manager ? manager.getRepository(Company) : this.companyRepository;
+  //     const company = repo.create(data);
+  //     return await repo.save(company);
+  //   }
 
   async verifyUser(userId: number): Promise<void> {
     await this.adminRepository.update(userId, {
@@ -222,5 +229,9 @@ export class AdminService implements IAuthUser {
 
   async getTaskDetailsForAdmin(id: number) {
     return this.taskService.getTaskDetailsForAdmin(id);
+  }
+
+  async getJobPostApplicantsForAdmin(id: number) {
+    return this.taskService.getJobPostApplicants(id);
   }
 }

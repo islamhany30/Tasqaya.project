@@ -28,12 +28,25 @@ import { AdminAuthGuard } from '../../Auth/Auth.roles';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { GetTasksFilterDto } from '../Task/Dto/GetTasksFilter.dto';
+import { CreateAdminDto } from './Dto/CreateAdmin.dto';
+import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
 
 @Controller('api/admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // ================= Routes for Admin Account =================
+
+  // @Post('register')
+  // async register(@Body() dto: CreateAdminDto) {
+  //   return this.adminService.register(dto);
+  // }
+
+  // @UseGuards(JwtAccountAuthGuard)
+  // @Post('verify')
+  // async verify(@Body() dto: VerifyEmailDto, @Req() req) {
+  //   return this.adminService.verifyAdmin(dto.VERIFICATIONCODE, req.user.sub);
+  // }
 
   @UseGuards(JwtAccountAuthGuard)
   @Patch('change-password')
@@ -155,5 +168,11 @@ export class AdminController {
   @Get('manage/tasks/:taskId')
   async getTaskDetails(@Param('id', ParseIntPipe) taskId: number) {
     return this.adminService.getTaskDetailsForAdmin(taskId);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/job-posts/:jobPostId/applicants')
+  async getJobPostApplicants(@Param('id', ParseIntPipe) jobPostId: number) {
+    return this.adminService.getJobPostApplicantsForAdmin(jobPostId);
   }
 }

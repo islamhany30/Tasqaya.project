@@ -36,6 +36,7 @@ import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
 import { WorkerType } from './entities/WorkerType';
 import { Account } from './entities/Accounts';
 import { SupervisorPayout } from './entities/SupervisorPayout';
+import { TaskModule } from './AllModules/Task/Task.module';
 
 @Module({
   imports: [
@@ -76,9 +77,9 @@ import { SupervisorPayout } from './entities/SupervisorPayout';
           WorkerScoreHistory,
           WorkerType,
           Account,
-          SupervisorPayout
+          SupervisorPayout,
         ],
-        synchronize: false,
+        synchronize: true,
         logging: true,
       }),
     }),
@@ -99,6 +100,7 @@ import { SupervisorPayout } from './entities/SupervisorPayout';
     WorkerModule,
     MailModule,
     ConfirmationModule,
+    TaskModule,
   ],
 
   providers: [

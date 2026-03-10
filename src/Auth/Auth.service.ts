@@ -93,6 +93,7 @@ export class AuthService {
       await userService.createUser(
         {
           ...dto,
+          password: hashedPassword,
           verificationCode,
           verificationCodeExpiry: expiry,
           isActive: true,
@@ -126,15 +127,21 @@ export class AuthService {
   //Email Verification
   async verifyUser(code: string, userId: number, userService: IAuthUser) {
     const user = await userService.findById(userId);
+
     if (!user) throw new NotFoundException('User not found');
+
     if (user.isVerified) throw new BadRequestException('User already verified');
+
     if (!user.verificationCode || !user.verificationCodeExpiry)
       throw new BadRequestException('No verification code found. Please request a new one.');
+
     if (code !== user.verificationCode) throw new BadRequestException('Invalid verification code');
+
     if (user.verificationCodeExpiry < new Date())
       throw new BadRequestException('Verification code expired. Please request a new one ');
 
     await userService.verifyUser(userId);
+
     return { message: 'Account verified successfully' };
   }
 
