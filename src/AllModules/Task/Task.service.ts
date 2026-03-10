@@ -30,12 +30,15 @@ import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { JobPost } from '../../entities/JobPost';
 import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
 import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
-import { Application } from '../../entities/Application';
-import { ApplicationStatusEnum } from '../../Enums/application-status.enum';
-import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum';
 import { Worker } from '../../entities/Worker';
 import { MoreThanOrEqual, Between, LessThanOrEqual } from 'typeorm';
 import { GetTasksFilterDto } from './Dto/GetTasksFilter.dto';
+import { Supervisor } from 'src/entities/Supervisor';
+import { Admin } from 'src/entities/Admin';
+import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
+import { AssignmentTypeEnum } from 'src/Enums/assignment-type.enum';
+import { Application } from 'src/entities/Application';
+
 @Injectable()
 export class TaskService {
   constructor(
@@ -59,6 +62,10 @@ export class TaskService {
     private readonly taskSupervisorRepo: Repository<TaskSupervisor>,
     @InjectRepository(TaskWorker)
     private readonly taskWorkerRepo: Repository<TaskWorker>,
+    @InjectRepository(Supervisor)
+    private readonly supervisorRepo: Repository<Supervisor>,
+    @InjectRepository(Admin)
+    private readonly adminRepo: Repository<Admin>,
     @InjectRepository(Application)
     private readonly applicationRepo: Repository<Application>,
     @InjectRepository(Worker)
@@ -187,6 +194,8 @@ export class TaskService {
     await this.paymentService.createInitialInvoice(task, companyId);
 
     await this.createJobPostForTask(task);
+
+    await this.assignSupervisorsToTask(task);
 
     return {
       message: 'Task approved successfully.',
@@ -626,7 +635,7 @@ export class TaskService {
     deadline.setHours(deadline.getHours() - 48);
 
     const jobPost = this.jobPostRepo.create({
-      task: { id: task.id },
+      task: task,
       maxAllowedWorkers: task.requiredWorkers,
       status: JobPostStatusEnum.OPEN,
       publishedAt,
@@ -671,8 +680,8 @@ export class TaskService {
       const isPrimary = index < requiredWorkers; // index here is based on the ranked list, not the original applications array
 
       const record = this.taskWorkerRepo.create({
-        task: { id: task.id } as Task,
-        worker: { id: app.worker.id } as Worker,
+        task: task,
+        worker: app.worker,
         assignmentType: isPrimary ? AssignmentTypeEnum.PRIMARY : AssignmentTypeEnum.BACKUP,
         backupOrder: isPrimary ? undefined : index - requiredWorkers + 1,
         confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
@@ -915,5 +924,124 @@ export class TaskService {
         })),
       },
     };
+  }
+
+  private async assignSupervisorsToTask(task: Task): Promise<void> {
+    const config = await this.systemconfig.findOne({ where: { id: 1 } });
+    const supervisorBonus = config?.globalSupervisorBouns ?? 400;
+
+    const availableSupervisors = await this.supervisorRepo
+      .createQueryBuilder('s')
+      .where('s.isActive = true')
+      .andWhere((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select('ts.supervisorId')
+          .from(TaskSupervisor, 'ts')
+          .innerJoin('ts.task', 't')
+          .where('t.startDate <= :newEnd', { newEnd: task.endDate })
+          .andWhere('t.endDate >= :newStart', { newStart: task.startDate })
+          .getQuery();
+        return `s.id NOT IN ${subQuery}`;
+      })
+      .take(task.requiredSupervisors)
+      .getMany();
+
+    if (availableSupervisors.length === 0) {
+      const admin = await this.adminRepo.findOne({ where: { isActive: true } });
+      if (admin) {
+        await this.mailService.sendMail({
+          to: admin.email,
+          subject: `⚠️ No Supervisors Available: ${task.eventName}`,
+          html: `
+        <div style="direction: ltr; font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e74c3c; border-radius: 10px;">
+          <h2 style="color: #e74c3c;">⚠️ Action Required: No Supervisors Available</h2>
+          <p>The following task has been approved but <b>no supervisors are available</b> for assignment:</p>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Event Name</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.eventName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Location</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.location}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Start Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.startDate).toDateString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">End Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.endDate).toDateString()}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Required Supervisors</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.requiredSupervisors}</td>
+            </tr>
+          </table>
+          <p style="margin-top: 20px; color: #e74c3c; font-weight: bold;">Please assign supervisors manually as soon as possible.</p>
+        </div>
+      `,
+        });
+      }
+      return;
+    }
+    const assignments = availableSupervisors.map((supervisor) => {
+      const assignment = new TaskSupervisor();
+      assignment.task = task;
+      assignment.supervisor = supervisor;
+      assignment.supervisorBonus = supervisorBonus;
+      return assignment;
+    });
+
+    await this.taskSupervisorRepo.save(assignments);
+
+    const emailPromises = availableSupervisors.map((supervisor) =>
+      this.mailService.sendMail({
+        to: supervisor.email,
+        subject: `New Task Assignment: ${task.eventName}`,
+        html: `
+        <div style="direction: ltr; font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #1a73e8;">You have been assigned to a new task! 🎯</h2>
+          <p>Hello <b>${supervisor.fullName}</b>,</p>
+          <p>You have been assigned as a supervisor for the following task:</p>
+
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Event Name</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.eventName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Location</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.location}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Start Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.startDate).toDateString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">End Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.endDate).toDateString()}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Hours Per Day</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.durationHoursPerDay} hours</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Your Bonus</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${supervisorBonus} EGP</td>
+            </tr>
+          </table>
+
+          <p style="margin-top: 20px; color: #5f6368; font-size: 14px;">
+            Please log in to your account for more details.
+          </p>
+          <p style="margin-top: 10px; font-size: 12px; color: #7f8c8d;">Thank you for your cooperation.</p>
+        </div>
+      `,
+      }),
+    );
+
+    await Promise.all(emailPromises);
   }
 }

@@ -1,6 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, OneToOne } from 'typeorm';
 import { Task } from './Task';
-import { Admin } from './Admin';
 import { JobPostStatusEnum } from '../Enums/job-post-status.enum';
 
 @Entity('job_posts')
@@ -21,10 +20,10 @@ export class JobPost {
   @Column()
   maxAllowedWorkers: number;
 
-  @Column({
-    type: 'enum',
-    enum: JobPostStatusEnum,
-    default: JobPostStatusEnum.OPEN,
+  @Column({ 
+    type: 'enum', 
+    enum: JobPostStatusEnum, 
+    default: JobPostStatusEnum.OPEN 
   })
   status: JobPostStatusEnum;
 }

@@ -32,7 +32,6 @@ import { TaskWorkerType } from './entities/TaskWorkerType';
 import { Worker } from './entities/Worker';
 import { WorkerLevel } from './entities/WorkerLevel';
 import { WorkerPayout } from './entities/WorkerPayout';
-import { WorkerScoreHistory } from './entities/WorkerScoreHistory';
 import { WorkerType } from './entities/WorkerType';
 import { Account } from './entities/Accounts';
 import { SupervisorPayout } from './entities/SupervisorPayout';
@@ -74,7 +73,6 @@ import { TaskModule } from './AllModules/Task/Task.module';
           TaskWorker,
           TaskWorkerType,
           WorkerPayout,
-          WorkerScoreHistory,
           WorkerType,
           Account,
           SupervisorPayout,

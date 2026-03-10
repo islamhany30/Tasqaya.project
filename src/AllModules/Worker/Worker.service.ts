@@ -24,7 +24,6 @@ import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';
 import { TaskService } from '../Task/Task.service';
-
 @Injectable()
 export class WorkerService implements IAuthUser {
   constructor(
@@ -224,7 +223,7 @@ export class WorkerService implements IAuthUser {
     }
 
     worker.profileImage = newImagePath;
-    this.workerRepository.save(worker);
+    await this.workerRepository.save(worker);
 
     return {
       message: 'Profile image updated successfully',
@@ -240,7 +239,7 @@ export class WorkerService implements IAuthUser {
     // Fetch worker to get level and gender
     const worker = await this.workerRepository.findOne({
       where: { id: workerId },
-      relations: ['level'],
+      relations:['level']
     });
 
     if (!worker) throw new NotFoundException('Worker not found');

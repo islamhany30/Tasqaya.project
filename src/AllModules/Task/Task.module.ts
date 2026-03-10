@@ -19,6 +19,8 @@ import { TaskWorkerType } from 'src/entities/TaskWorkerType';
 import { JobPost } from 'src/entities/JobPost';
 import { Attendance } from 'src/entities/Attendance';
 import { Worker } from 'src/entities/Worker';
+import { Supervisor } from 'src/entities/Supervisor';
+import { Admin } from 'src/entities/Admin';
 import { Application } from 'src/entities/Application';
 
 @Module({
@@ -30,6 +32,7 @@ import { Application } from 'src/entities/Application';
       WorkerLevel,
       SystemConfig,
       Payment,
+      Admin,
       CompanyFeedback,
       ConfirmationToken,
       TaskSupervisor,
@@ -38,6 +41,7 @@ import { Application } from 'src/entities/Application';
       Attendance,
       Worker,
       Application,
+      Supervisor
     ]),
     PaymentModule,
     MailModule,

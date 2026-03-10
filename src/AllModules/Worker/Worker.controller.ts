@@ -20,10 +20,6 @@ import { CreateWorkerDto } from './Dto/CreateWorker.dto';
 // import { JwtRegisterAuthGuard } from 'src/Auth/auth.guards.register';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
 import { JwtAccountAuthGuard } from 'src/Auth/auth.guards.account';
-import { LoginDto } from 'src/Auth/Dto/Login.dto';
-import { ForgotPasswordDto } from 'src/Auth/Dto/ForgotPassword.dto';
-import { VerifyResetCodeDto } from 'src/Auth/Dto/VerifyReset.dto';
-import { ResetPasswordDto } from 'src/Auth/Dto/ResetPassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { UpdateWorkerDto } from './Dto/UpdateWorker.dto';
@@ -33,7 +29,7 @@ import { CreateApplicationDto } from './Dto/CreateApplicationDto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
-import * as path from 'path';
+import * as path from 'path';;
 
 @Controller('api/worker')
 export class WorkerController {
@@ -54,26 +50,6 @@ export class WorkerController {
   @UseGuards(JwtAccountAuthGuard)
   async resendVerification(@Req() req: any) {
     return this.workerService.resendVerification(req.user.sub);
-  }
-
-  @Post('login')
-  async login(@Body() dto: LoginDto) {
-    return this.workerService.login(dto);
-  }
-
-  @Post('forgot-password')
-  async forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.workerService.forgotPassword(dto);
-  }
-
-  @Post('verify-reset-code')
-  async verifyResetCode(@Body() dto: VerifyResetCodeDto) {
-    return this.workerService.verifyResetCode(dto);
-  }
-
-  @Patch('reset-password')
-  async resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.workerService.resetPassword(dto);
   }
 
   @UseGuards(JwtAccountAuthGuard)
