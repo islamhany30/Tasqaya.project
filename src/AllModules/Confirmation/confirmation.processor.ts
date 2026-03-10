@@ -1,6 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
-import { Logger } from '@nestjs/common';
 import { ConfirmationResponseService } from './ConfirmationResponse.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';

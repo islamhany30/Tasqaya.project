@@ -9,6 +9,7 @@ import { CompanyModule } from '../Company/Company.module'; // عشان نقدر 
 import { AuthModule } from 'src/Auth/Auth.module';
 import { SupervisorModule } from '../Supervisor/Supervisor.module';
 import { WorkerModule } from '../Worker/Worker.module';
+import { TaskModule } from '../Task/Task.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { WorkerModule } from '../Worker/Worker.module';
     CompanyModule,
     WorkerModule,
     SupervisorModule,
+    TaskModule,
     TypeOrmModule.forFeature([Admin, Company]),
   ],
   controllers: [AdminController],

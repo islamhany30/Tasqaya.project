@@ -12,6 +12,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { SupervisorService } from '../Supervisor/Supervisor.service';
 import { WorkerService } from '../Worker/Worker.service';
+import { GetTasksFilterDto } from '../Task/Dto/GetTasksFilter.dto';
+import { TaskService } from '../Task/Task.service';
 
 @Injectable()
 export class AdminService implements IAuthUser {
@@ -22,6 +24,7 @@ export class AdminService implements IAuthUser {
     private readonly companyService: CompanyService,
     private readonly supervisorService: SupervisorService,
     private readonly workerService: WorkerService,
+    private readonly taskService: TaskService,
   ) {}
 
   //IAuthUser Implementation (called by AuthService)
@@ -105,7 +108,6 @@ export class AdminService implements IAuthUser {
   async resendVerification(adminId: number) {
     return this.authService.resendVerification(adminId, this);
   }
-
 
   async changePassword(adminId: number, dto: { oldPassword: string; newPassword: string }) {
     return this.authService.changePassword(adminId, dto.oldPassword, dto.newPassword, this);
@@ -212,5 +214,13 @@ export class AdminService implements IAuthUser {
 
   async getAllWorkers() {
     return this.workerService.getAllWorkers();
+  }
+
+  async getAllTasksForAdmin(dto: GetTasksFilterDto) {
+    return this.taskService.getAllTasksForAdmin(dto);
+  }
+
+  async getTaskDetailsForAdmin(id: number) {
+    return this.taskService.getTaskDetailsForAdmin(id);
   }
 }

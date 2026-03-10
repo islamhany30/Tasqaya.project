@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   InternalServerErrorException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThan, Repository } from 'typeorm';
@@ -32,15 +33,14 @@ import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
 import { Application } from '../../entities/Application';
 import { ApplicationStatusEnum } from '../../Enums/application-status.enum';
 import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum';
-
 import { Worker } from '../../entities/Worker';
-
+import { MoreThanOrEqual, Between, LessThanOrEqual } from 'typeorm';
+import { GetTasksFilterDto } from './Dto/GetTasksFilter.dto';
 @Injectable()
 export class TaskService {
   constructor(
     @InjectRepository(Task)
     private readonly taskRepo: Repository<Task>,
-
     @InjectRepository(WorkerLevel)
     private readonly levelRepo: Repository<WorkerLevel>,
     @InjectRepository(JobPost)
@@ -61,10 +61,13 @@ export class TaskService {
     private readonly taskWorkerRepo: Repository<TaskWorker>,
     @InjectRepository(Application)
     private readonly applicationRepo: Repository<Application>,
+    @InjectRepository(Worker)
+    private readonly workerRepo: Repository<Worker>,
 
     private readonly paymentService: PaymentService,
     private readonly mailService: MailService,
   ) {}
+
   async createTaskByCompany(dto: CreateTaskDto, companyId: number) {
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
@@ -632,6 +635,7 @@ export class TaskService {
     return await this.jobPostRepo.save(jobPost);
   }
 
+  //Filteration of workers in a job post
   async filterJobPostWorkers(jobPostId: number): Promise<void> {
     const jobPost = await this.jobPostRepo.findOne({
       where: { id: jobPostId },
@@ -709,5 +713,164 @@ export class TaskService {
 
     //Close the job post
     await this.jobPostRepo.update(jobPostId, { status: JobPostStatusEnum.CLOSED });
+  }
+
+  //Get all tasks with optional filters (Admin)
+  async getAllTasksForAdmin(filters: GetTasksFilterDto): Promise<any> {
+    const where: any = {};
+
+    if (filters.status) where.status = filters.status;
+
+    if (filters.companyId) where.companyId = filters.companyId;
+
+    if (filters.approvalStatus) where.approvalStatus = filters.approvalStatus;
+
+    if (filters.startDateFrom && filters.startDateTo) {
+      where.startDate = Between(new Date(filters.startDateFrom), new Date(filters.startDateTo));
+    } else if (filters.startDateFrom) {
+      where.startDate = MoreThanOrEqual(new Date(filters.startDateFrom));
+    } else if (filters.startDateTo) {
+      where.startsDate = LessThanOrEqual(new Date(filters.startDateTo));
+    }
+
+    const tasks = await this.taskRepo.find({
+      where,
+      relations: ['company', 'jobPost', 'workerLevel'],
+      order: { createdAt: 'DESC' },
+      select: {
+        id: true,
+        eventName: true,
+        location: true,
+        startDate: true,
+        endDate: true,
+        requiredWorkers: true,
+        requiredSupervisors: true,
+        status: true,
+        approvalStatus: true,
+        totalCost: true,
+        createdAt: true,
+        requiredWorkerStatus: true,
+
+        company: {
+          id: true,
+          name: true,
+          email: true,
+        },
+        workerLevel: {
+          id: true,
+          levelName: true,
+        },
+        jobPost: {
+          id: true,
+          status: true,
+          deadline: true,
+          maxAllowedWorkers: true,
+        },
+      },
+    });
+
+    return {
+      message: 'Tasks retrieved successfully',
+      data: {
+        result: tasks.length,
+        tasks,
+      },
+    };
+  }
+
+  async getTaskDetailsForAdmin(taskId: number): Promise<any> {
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId },
+      relations: [
+        'company',
+        'workerLevel',
+        'workerTypes',
+        'workerTypes.workerTypeId',
+        'jobPost',
+        'supervisors',
+        'supervisors.supervisor',
+        'taskWorkers',
+        'taskWorkers.worker',
+        'payment',
+      ],
+    });
+
+    if (!task) throw new NotFoundException(`Task with ID: ${taskId} not found`);
+
+    return {
+      message: 'Task details fetched successfully',
+      data: {
+        id: task.id,
+        eventName: task.eventName,
+        location: task.location,
+        startDate: task.startDate,
+        endDate: task.endDate,
+        durationHoursPerDay: task.durationHoursPerDay,
+        requiredWorkers: task.requiredWorkers,
+        requiredSupervisors: task.requiredSupervisors,
+        status: task.status,
+        approvalStatus: task.approvalStatus,
+        requiredWorkerStatus: task.requiredWorkerStatus,
+        hasUniform: task.hasUniform,
+        uniformDescription: task.uniformDescription,
+        genders: task.genders,
+        createdAt: task.createdAt,
+
+        company: {
+          id: task.company.id,
+          name: task.company.name,
+          email: task.company.email,
+        },
+
+        workerLevel: {
+          id: task.workerLevel.id,
+          levelName: task.workerLevel.levelName,
+        },
+
+        workerTypes: task.workerTypes.map((twt) => ({
+          id: twt.workerTypeId.id,
+          typeName: twt.workerTypeId.typeName,
+        })),
+
+        financials: {
+          baseWorkersCost: task.baseWorkersCost,
+          supervisingFees: task.supervisingFees,
+          platformFee: task.platformFee,
+          totalCost: task.totalCost,
+          paymentStatus: task.payment?.status || null,
+        },
+
+        jobPost: task.jobPost
+          ? {
+              id: task.jobPost.id,
+              status: task.jobPost.status,
+              deadline: task.jobPost.deadline,
+              publishedAt: task.jobPost.publishedAt,
+              maxAllowedWorkers: task.jobPost.maxAllowedWorkers,
+            }
+          : null,
+
+        supervisors: task.supervisors.map((ts) => ({
+          assignmentId: ts.id,
+          supervisorId: ts.supervisor.id,
+          fullName: ts.supervisor.fullName,
+          email: ts.supervisor.email,
+          phone: ts.supervisor.phone,
+          supervisorBonus: ts.supervisorBonus,
+          whatsAppGroupLink: ts.whatsAppGroupLink || null,
+        })),
+
+        workers: {
+          total: task.taskWorkers.length,
+          list: task.taskWorkers.map((tw) => ({
+            workerId: tw.worker.id,
+            fullName: tw.worker.fullName,
+            assignmentType: tw.assignmentType,
+            backupOrder: tw.backupOrder || null,
+            confirmationStatus: tw.confirmationStatus,
+          })),
+        },
+      },
+    };
   }
 }

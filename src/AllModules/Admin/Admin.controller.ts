@@ -13,6 +13,7 @@ import {
   UploadedFile,
   ParseIntPipe,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 
 import { AdminService } from './Admin.service';
@@ -26,6 +27,7 @@ import { ChangeAccountStatusDto } from './Dto/ChangeAccountStatus.dto';
 import { AdminAuthGuard } from '../../Auth/Auth.roles';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
+import { GetTasksFilterDto } from '../Task/Dto/GetTasksFilter.dto';
 
 @Controller('api/admin')
 export class AdminController {
@@ -141,5 +143,17 @@ export class AdminController {
   @Get('manage/workers')
   async getAllWorkers() {
     return this.adminService.getAllWorkers();
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/tasks')
+  async getAllTasks(@Query() filters: GetTasksFilterDto) {
+    return this.adminService.getAllTasksForAdmin(filters);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/tasks/:taskId')
+  async getTaskDetails(@Param('id', ParseIntPipe) taskId: number) {
+    return this.adminService.getTaskDetailsForAdmin(taskId);
   }
 }

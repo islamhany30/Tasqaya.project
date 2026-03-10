@@ -232,6 +232,8 @@ export class WorkerService implements IAuthUser {
     };
   }
 
+  
+
   // ==================== JOB BROWSING & APPLICATION METHODS ====================
 
   async getAvailableJobs(workerId: number, query: GetWorkerJobsQueryDto): Promise<any> {
@@ -496,7 +498,7 @@ export class WorkerService implements IAuthUser {
       take: pagination.limit,
     });
 
-    // Transform to response format
+    // Transform to response format, why? Because we
     const appResponses = applications.map((app) => {
       const taskGenders = Array.isArray(app.jobPost.task.genders)
         ? app.jobPost.task.genders
