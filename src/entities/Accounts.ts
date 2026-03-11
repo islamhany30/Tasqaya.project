@@ -14,7 +14,7 @@ export class Account {
   email: string;
 
   @Column()
-  password: string; 
+  password: string;
 
   @Column({
     type: 'enum',

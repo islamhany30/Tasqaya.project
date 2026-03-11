@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { Task } from '../../entities/Task'; 
+import { Task } from '../../entities/Task';
 import { WorkerType } from '../../entities/WorkerType';
 
 import { TaskService } from './Task.service';
@@ -26,8 +26,8 @@ import { Application } from 'src/entities/Application';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Task, 
-      WorkerType, 
+      Task,
+      WorkerType,
       TaskWorker,
       WorkerLevel,
       SystemConfig,
@@ -44,16 +44,10 @@ import { Application } from 'src/entities/Application';
       Supervisor
     ]),
     PaymentModule,
-    MailModule
+    MailModule,
   ],
-  controllers: [
-    CompanyController
-  ],
-  providers: [
-    TaskService,TaskSchedulerService
-  ],
-  exports: [
-    TaskService
-  ],
+  controllers: [CompanyController],
+  providers: [TaskService, TaskSchedulerService],
+  exports: [TaskService],
 })
 export class TaskModule {}

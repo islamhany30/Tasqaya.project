@@ -179,11 +179,7 @@ export class CompanyController {
 
   @Patch('update/:taskId')
   @UseGuards(JwtAccountAuthGuard)
-  async update(
-    @Param('taskId', ParseIntPipe) taskId: number,
-    @Body() dto: UpdateTaskDto,
-    @Req() req,
-  ) {
+  async update(@Param('taskId', ParseIntPipe) taskId: number, @Body() dto: UpdateTaskDto, @Req() req) {
     const companyId = req.user.sub;
     return await this.taskService.updateTask(taskId, companyId, dto);
   }
@@ -198,10 +194,7 @@ export class CompanyController {
 
   @Get(':taskId/confirmed-workers')
   @UseGuards(JwtAccountAuthGuard)
-  async getConfirmedWorkersForTask(
-    @Param('taskId', ParseIntPipe) taskId: number,
-    @Req() req,
-  ) {
+  async getConfirmedWorkersForTask(@Param('taskId', ParseIntPipe) taskId: number, @Req() req) {
     const companyId = req.user.sub;
     return await this.taskService.getConfirmedWorkers(taskId, companyId);
   }
@@ -220,21 +213,14 @@ export class CompanyController {
 
   @Get('payments/:paymentId')
   @UseGuards(JwtAccountAuthGuard)
-  async getInvoiceDetails(
-    @Param('paymentId', ParseIntPipe) paymentId: number,
-    @Req() req,
-  ) {
+  async getInvoiceDetails(@Param('paymentId', ParseIntPipe) paymentId: number, @Req() req) {
     const companyId = req.user.sub;
     return await this.paymentService.getCompanyInvoiceDetails(paymentId, companyId);
   }
 
   @Post('payments/:paymentId/pay')
   @UseGuards(JwtAccountAuthGuard)
-  async payInvoice(
-    @Param('paymentId', ParseIntPipe) paymentId: number,
-    @Body() body: PayInvoiceDto,
-    @Req() req,
-  ) {
+  async payInvoice(@Param('paymentId', ParseIntPipe) paymentId: number, @Body() body: PayInvoiceDto, @Req() req) {
     const companyId = req.user.sub;
     return await this.paymentService.initiatePayment(paymentId, companyId, body.method);
   }
@@ -245,11 +231,7 @@ export class CompanyController {
 
   @Post(':taskId/feedback')
   @UseGuards(JwtAccountAuthGuard)
-  async submitFeedback(
-    @Param('taskId', ParseIntPipe) taskId: number,
-    @Body() dto: CreateFeedbackDto,
-    @Req() req,
-  ) {
+  async submitFeedback(@Param('taskId', ParseIntPipe) taskId: number, @Body() dto: CreateFeedbackDto, @Req() req) {
     const companyId = req.user.sub;
     return await this.taskService.submitTaskFeedback(taskId, dto, companyId);
   }

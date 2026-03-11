@@ -1,9 +1,16 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { Account } from "src/entities/Accounts";
-import { DataSource } from "typeorm";
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Account } from 'src/entities/Accounts';
+import { DataSource } from 'typeorm';
 import { Request } from 'express';
-import { Admin } from "../entities/Admin";
+import { Admin } from '../entities/Admin';
 
 @Injectable()
 export class AdminAuthGuard implements CanActivate {

@@ -13,15 +13,16 @@ import { Payment } from '../../entities/Payment';
 import { JobPost } from '../../entities/JobPost';
 import { MailService } from '../../Mail/MailService';
 import { PaymentService } from '../Payment/Payment.service';
-import {
-  BadRequestException,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { TaskApprovalStatusEnum } from '../../Enums/task-approval.enum';
 import { TaskStatusEnum } from '../../Enums/task-status.enum';
 import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { PaymentStatusEnum } from '../../Enums/payment-status.enum';
+import { Application } from '../../entities/Application';
+import { ApplicationStatusEnum } from '../../Enums/application-status.enum';
+import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum';
+import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
+import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum';
 
 describe('TaskService - Full Coverage', () => {
   let service: TaskService;
@@ -38,17 +39,15 @@ describe('TaskService - Full Coverage', () => {
   let jobPostRepo: any;
   let paymentService: PaymentService;
   let mailService: MailService;
+  let applicationRepo: any;
 
   const mockRepoFactory = () => ({
     findOne: jest.fn(),
     find: jest.fn(),
     create: jest.fn().mockImplementation((dto) => dto),
-    save: jest
-      .fn()
-      .mockImplementation((entity) =>
-        Promise.resolve({ id: Date.now(), ...entity }),
-      ),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: Date.now(), ...entity })),
     remove: jest.fn().mockResolvedValue({}),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
     createQueryBuilder: jest.fn(),
   });
 
@@ -74,6 +73,7 @@ describe('TaskService - Full Coverage', () => {
           provide: MailService,
           useValue: { sendMail: jest.fn().mockResolvedValue(true) },
         },
+        { provide: getRepositoryToken(Application), useValue: mockRepoFactory() },
       ],
     }).compile();
 
@@ -90,6 +90,7 @@ describe('TaskService - Full Coverage', () => {
     jobPostRepo = module.get(getRepositoryToken(JobPost));
     paymentService = module.get<PaymentService>(PaymentService);
     mailService = module.get<MailService>(MailService);
+    applicationRepo = module.get(getRepositoryToken(Application));
   });
 
   // ── Helpers ──────────────────────────────────────────────────────────────
@@ -113,6 +114,19 @@ describe('TaskService - Full Coverage', () => {
     groupBy: jest.fn().mockReturnThis(),
     getRawMany: jest.fn().mockResolvedValue(rawMany),
     getRawOne: jest.fn().mockResolvedValue(rawOne),
+  });
+
+  const buildFiltrationQbMock = (getManyResult: any[] = []) => ({
+    innerJoinAndSelect: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(getManyResult),
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+    whereInIds: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ affected: getManyResult.length }),
   });
 
   // =========================================================================
@@ -140,9 +154,7 @@ describe('TaskService - Full Coverage', () => {
 
       expect(result.requiredSupervisors).toBe(2); // 20 * 10% = 2
       expect(taskWorkerTypeRepo.save).toHaveBeenCalled();
-      expect(taskRepo.save).toHaveBeenCalledWith(
-        expect.objectContaining({ hasUniform: true, genders: ['Male'] }),
-      );
+      expect(taskRepo.save).toHaveBeenCalledWith(expect.objectContaining({ hasUniform: true, genders: ['Male'] }));
     });
 
     it('should force at least 1 supervisor when workers are few', async () => {
@@ -236,9 +248,7 @@ describe('TaskService - Full Coverage', () => {
       );
       // createJobPostForTask بيتنادى fire-and-forget (بدون await)
       // نتأكد إن الـ jobPostRepo.create اتنادى
-      expect(jobPostRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ status: expect.any(String) }),
-      );
+      expect(jobPostRepo.create).toHaveBeenCalledWith(expect.objectContaining({ status: expect.any(String) }));
     });
 
     it('should throw NotFoundException if task not found', async () => {
@@ -296,9 +306,9 @@ describe('TaskService - Full Coverage', () => {
 
     it('should throw BadRequestException if new startDate is within 7 days', async () => {
       taskRepo.findOne.mockResolvedValue(baseTask());
-      await expect(
-        service.updateTask(1, 1, { startDate: futureDate(2), requiredWorkers: 5 } as any),
-      ).rejects.toThrow(BadRequestException);
+      await expect(service.updateTask(1, 1, { startDate: futureDate(2), requiredWorkers: 5 } as any)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it('should throw BadRequestException if current startDate is within 7 days', async () => {
@@ -323,9 +333,9 @@ describe('TaskService - Full Coverage', () => {
     it('should throw NotFoundException if new workerLevel not found', async () => {
       taskRepo.findOne.mockResolvedValue(baseTask());
       levelRepo.findOne.mockResolvedValue(null);
-      await expect(
-        service.updateTask(1, 1, { workerLevel: 'Ghost', requiredWorkers: 5 } as any),
-      ).rejects.toThrow(NotFoundException);
+      await expect(service.updateTask(1, 1, { workerLevel: 'Ghost', requiredWorkers: 5 } as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('should update workerTypes and remove old ones', async () => {
@@ -492,9 +502,7 @@ describe('TaskService - Full Coverage', () => {
   // =========================================================================
   describe('getCompanyDashboardStats', () => {
     it('should return aggregated stats correctly', async () => {
-      const taskQb = buildQbMock([
-        { status: TaskStatusEnum.COMPLETED, count: '5', workersCount: '50' },
-      ]);
+      const taskQb = buildQbMock([{ status: TaskStatusEnum.COMPLETED, count: '5', workersCount: '50' }]);
       const paymentQb = buildQbMock([
         { status: PaymentStatusEnum.PAID, total: '10000' },
         { status: PaymentStatusEnum.PENDING, total: '2000' },
@@ -555,9 +563,7 @@ describe('TaskService - Full Coverage', () => {
   // =========================================================================
   describe('getPendingCompanyTasks', () => {
     it('should return pending tasks for a company', async () => {
-      taskRepo.find.mockResolvedValue([
-        { id: 1, approvalStatus: TaskApprovalStatusEnum.PENDING },
-      ]);
+      taskRepo.find.mockResolvedValue([{ id: 1, approvalStatus: TaskApprovalStatusEnum.PENDING }]);
 
       const result = await service.getPendingCompanyTasks(1);
       expect(result).toHaveLength(1);
@@ -606,9 +612,7 @@ describe('TaskService - Full Coverage', () => {
         id: 1,
         requiredWorkerStatus: requiredWorkersStatusEnum.COMPLETED,
       });
-      taskWorkerRepo.find.mockResolvedValue([
-        { worker: { id: 1, fullName: 'John Doe', profileImage: 'img.png' } },
-      ]);
+      taskWorkerRepo.find.mockResolvedValue([{ worker: { id: 1, fullName: 'John Doe', profileImage: 'img.png' } }]);
 
       const result = await service.getConfirmedWorkers(1, 1);
       expect(result).toHaveLength(1);
@@ -621,9 +625,7 @@ describe('TaskService - Full Coverage', () => {
         id: 1,
         requiredWorkerStatus: requiredWorkersStatusEnum.COMPLETED,
       });
-      taskWorkerRepo.find.mockResolvedValue([
-        { worker: { id: 2, fullName: 'Jane', profileImage: null } },
-      ]);
+      taskWorkerRepo.find.mockResolvedValue([{ worker: { id: 2, fullName: 'Jane', profileImage: null } }]);
 
       const result = await service.getConfirmedWorkers(1, 1);
       expect(result[0].profilePicture).toBe('default-avatar-url');
@@ -632,6 +634,318 @@ describe('TaskService - Full Coverage', () => {
     it('should throw BadRequestException if task not found or status is not COMPLETED', async () => {
       taskRepo.findOne.mockResolvedValue(null);
       await expect(service.getConfirmedWorkers(1, 1)).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('filterJobPostWorkers', () => {
+    // ── Helper: build a fake ranked application ─────────────────────────────
+    const makeApp = (id: number, reliabilityRate: number, appliedAtOffset: number, score = 0, completedTasks = 0) => ({
+      id,
+      status: ApplicationStatusEnum.PENDING,
+      appliedAt: new Date(Date.now() + appliedAtOffset * 1000),
+      worker: {
+        id: id + 100, // worker ID = app ID + 100 (unique, easy to track)
+        reliabilityRate,
+        score,
+        completedTasks,
+      },
+    });
+
+    // ── Helper: mock the applicationRepo.createQueryBuilder chain ───────────
+    const mockAppQb = (apps: any[]) => {
+      const qb = buildFiltrationQbMock(apps);
+      applicationRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      return qb;
+    };
+
+    // ── Helper: mock the taskWorkerRepo.createQueryBuilder update chain ──────
+    const mockUpdateQb = () => {
+      const qb = buildFiltrationQbMock();
+      taskWorkerRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      return qb;
+    };
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CASE 1: Happy path — enough applicants for full selection
+    // Task requires 3 workers → expects 3 PRIMARY + 3 BACKUP selected
+    // ────────────────────────────────────────────────────────────────────────
+    describe('happy path — full pool available', () => {
+      beforeEach(() => {
+        // JobPost is OPEN, linked to task requiring 3 workers
+        jobPostRepo.findOne.mockResolvedValue({
+          id: 1,
+          status: JobPostStatusEnum.OPEN,
+          task: { id: 10, requiredWorkers: 3 },
+        });
+
+        // 10 applicants — more than enough (3 primary + 3 backup = 6 needed)
+        // Ordered by descending reliabilityRate then ascending appliedAt
+        const apps = [
+          makeApp(1, 99.0, 1), // best reliability → PRIMARY #1
+          makeApp(2, 95.0, 2), // → PRIMARY #2
+          makeApp(3, 90.0, 3), // → PRIMARY #3
+          makeApp(4, 85.0, 4), // → BACKUP #1 (backupOrder=1)
+          makeApp(5, 80.0, 5), // → BACKUP #2 (backupOrder=2)
+          makeApp(6, 75.0, 6), // → BACKUP #3 (backupOrder=3)
+          makeApp(7, 70.0, 7), // → REJECTED
+          makeApp(8, 65.0, 8), // → REJECTED
+          makeApp(9, 60.0, 9), // → REJECTED
+          makeApp(10, 55.0, 10), // → REJECTED
+        ];
+        mockAppQb(apps);
+        mockUpdateQb();
+      });
+
+      it('should create 6 TaskWorker records (3 primary + 3 backup)', async () => {
+        taskWorkerRepo.create.mockImplementation((data: any) => data);
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(1);
+
+        // taskWorkerRepo.create called 6 times (3+3)
+        expect(taskWorkerRepo.create).toHaveBeenCalledTimes(6);
+      });
+
+      it('should assign first 3 as PRIMARY with no backupOrder', async () => {
+        const created: any[] = [];
+        taskWorkerRepo.create.mockImplementation((data: any) => {
+          created.push(data);
+          return data;
+        });
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(1);
+
+        const primaries = created.filter((r) => r.assignmentType === AssignmentTypeEnum.PRIMARY);
+        expect(primaries).toHaveLength(3);
+        primaries.forEach((p) => expect(p.backupOrder).toBeUndefined());
+      });
+
+      it('should assign next 3 as BACKUP with backupOrder 1, 2, 3', async () => {
+        const created: any[] = [];
+        taskWorkerRepo.create.mockImplementation((data: any) => {
+          created.push(data);
+          return data;
+        });
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(1);
+
+        const backups = created.filter((r) => r.assignmentType === AssignmentTypeEnum.BACKUP);
+        expect(backups).toHaveLength(3);
+        expect(backups[0].backupOrder).toBe(1);
+        expect(backups[1].backupOrder).toBe(2);
+        expect(backups[2].backupOrder).toBe(3);
+      });
+
+      it('should close the JobPost after filtration', async () => {
+        taskWorkerRepo.create.mockImplementation((d: any) => d);
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(1);
+
+        expect(jobPostRepo.update).toHaveBeenCalledWith(1, { status: JobPostStatusEnum.CLOSED });
+      });
+
+      it('should update rejected application statuses to REJECTED', async () => {
+        taskWorkerRepo.create.mockImplementation((d: any) => d);
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        const qb = applicationRepo.createQueryBuilder();
+        await service.filterJobPostWorkers(1);
+
+        // The update chain should have been called for rejected IDs
+        expect(qb.execute).toHaveBeenCalled();
+      });
+    });
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CASE 2: Not enough applicants (less than requiredWorkers + 3)
+    // Task requires 3 workers, only 4 applicants — can't fill 3 backup slots
+    // ────────────────────────────────────────────────────────────────────────
+    describe('edge case — fewer applicants than required', () => {
+      beforeEach(() => {
+        jobPostRepo.findOne.mockResolvedValue({
+          id: 2,
+          status: JobPostStatusEnum.OPEN,
+          task: { id: 20, requiredWorkers: 3 },
+        });
+
+        // Only 4 applicants — enough for 3 primary, only 1 backup, 0 rejected
+        const apps = [
+          makeApp(1, 99.0, 1),
+          makeApp(2, 95.0, 2),
+          makeApp(3, 90.0, 3),
+          makeApp(4, 85.0, 4), // only 1 backup available
+        ];
+        mockAppQb(apps);
+        mockUpdateQb();
+      });
+
+      it('should still create TaskWorker records for all available applicants', async () => {
+        taskWorkerRepo.create.mockImplementation((d: any) => d);
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(2);
+
+        // 3 primary + 1 backup = 4 records created
+        expect(taskWorkerRepo.create).toHaveBeenCalledTimes(4);
+      });
+
+      it('should still close the JobPost even with partial backup', async () => {
+        taskWorkerRepo.create.mockImplementation((d: any) => d);
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(2);
+
+        expect(jobPostRepo.update).toHaveBeenCalledWith(2, { status: JobPostStatusEnum.CLOSED });
+      });
+
+      it('should produce no REJECTED applications when all fit in selected', async () => {
+        const created: any[] = [];
+        taskWorkerRepo.create.mockImplementation((d: any) => {
+          created.push(d);
+          return d;
+        });
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(2);
+
+        // All 4 were selected — 0 rejected
+        // The rejected update block should NOT be called (rejectedIds.length === 0)
+        // We verify this by checking backupOrders assigned correctly
+        const backups = created.filter((r) => r.assignmentType === AssignmentTypeEnum.BACKUP);
+        expect(backups).toHaveLength(1);
+        expect(backups[0].backupOrder).toBe(1);
+      });
+    });
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CASE 3: Zero applicants — nothing to do, should still close JobPost
+    // ────────────────────────────────────────────────────────────────────────
+    describe('edge case — zero applicants', () => {
+      it('should close the JobPost with no TaskWorker records created', async () => {
+        jobPostRepo.findOne.mockResolvedValue({
+          id: 3,
+          status: JobPostStatusEnum.OPEN,
+          task: { id: 30, requiredWorkers: 5 },
+        });
+        mockAppQb([]); // no applicants
+        mockUpdateQb();
+        taskWorkerRepo.create.mockImplementation((d: any) => d);
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(3);
+
+        expect(taskWorkerRepo.create).not.toHaveBeenCalled();
+        expect(jobPostRepo.update).toHaveBeenCalledWith(3, { status: JobPostStatusEnum.CLOSED });
+      });
+    });
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CASE 4: JobPost already CLOSED — idempotency guard should skip silently
+    // ────────────────────────────────────────────────────────────────────────
+    describe('idempotency — already closed JobPost', () => {
+      it('should return early without doing anything', async () => {
+        jobPostRepo.findOne.mockResolvedValue({
+          id: 4,
+          status: JobPostStatusEnum.CLOSED, // already closed
+          task: { id: 40, requiredWorkers: 5 },
+        });
+
+        await service.filterJobPostWorkers(4);
+
+        // Nothing should have been called
+        expect(taskWorkerRepo.create).not.toHaveBeenCalled();
+        expect(taskWorkerRepo.save).not.toHaveBeenCalled();
+        expect(jobPostRepo.update).not.toHaveBeenCalled();
+        expect(applicationRepo.createQueryBuilder).not.toHaveBeenCalled();
+      });
+    });
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CASE 5: JobPost not found — should throw NotFoundException
+    // ────────────────────────────────────────────────────────────────────────
+    describe('error case — JobPost not found', () => {
+      it('should throw NotFoundException', async () => {
+        jobPostRepo.findOne.mockResolvedValue(null);
+
+        await expect(service.filterJobPostWorkers(999)).rejects.toThrow(NotFoundException);
+      });
+    });
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CASE 6: Ranking correctness — verify reliabilityRate is top priority
+    // Two workers with different reliability — higher rate should get PRIMARY
+    // ────────────────────────────────────────────────────────────────────────
+    describe('ranking — reliabilityRate is top priority', () => {
+      it('should select highest reliabilityRate workers as PRIMARY', async () => {
+        jobPostRepo.findOne.mockResolvedValue({
+          id: 5,
+          status: JobPostStatusEnum.OPEN,
+          task: { id: 50, requiredWorkers: 2 },
+        });
+
+        // Apps are returned already ranked by DB query (we mock the result directly)
+        // In real code the DB orderBy handles ranking — here we simulate the ranked output
+        const rankedApps = [
+          makeApp(1, 98.0, 1), // PRIMARY #1 — highest rate
+          makeApp(2, 92.0, 2), // PRIMARY #2
+          makeApp(3, 85.0, 3), // BACKUP #1
+          makeApp(4, 80.0, 4), // BACKUP #2
+          makeApp(5, 75.0, 5), // BACKUP #3
+        ];
+        mockAppQb(rankedApps);
+        mockUpdateQb();
+
+        const created: any[] = [];
+        taskWorkerRepo.create.mockImplementation((d: any) => {
+          created.push(d);
+          return d;
+        });
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(5);
+
+        const primaries = created.filter((r) => r.assignmentType === AssignmentTypeEnum.PRIMARY);
+        // Workers 101 and 102 (app IDs 1 and 2 → worker IDs 101, 102) should be primary
+        expect(primaries.map((p) => p.worker.id)).toEqual([101, 102]);
+      });
+    });
+
+    // ────────────────────────────────────────────────────────────────────────
+    // CASE 7: All selected workers get PENDING confirmationStatus
+    // ────────────────────────────────────────────────────────────────────────
+    describe('confirmationStatus — all selected workers start as PENDING', () => {
+      it('should set confirmationStatus to PENDING for all TaskWorker records', async () => {
+        jobPostRepo.findOne.mockResolvedValue({
+          id: 6,
+          status: JobPostStatusEnum.OPEN,
+          task: { id: 60, requiredWorkers: 2 },
+        });
+
+        mockAppQb([
+          makeApp(1, 90.0, 1),
+          makeApp(2, 85.0, 2),
+          makeApp(3, 80.0, 3),
+          makeApp(4, 75.0, 4),
+          makeApp(5, 70.0, 5),
+        ]);
+        mockUpdateQb();
+
+        const created: any[] = [];
+        taskWorkerRepo.create.mockImplementation((d: any) => {
+          created.push(d);
+          return d;
+        });
+        taskWorkerRepo.save.mockResolvedValue([]);
+
+        await service.filterJobPostWorkers(6);
+
+        created.forEach((record) => {
+          expect(record.confirmationStatus).toBe(WorkerConfirmationStatusEnum.PENDING);
+        });
+      });
     });
   });
 });

@@ -16,3 +16,4 @@ export class UpdateWorkerDto {
   @Length(5, 255)
   address?: string;
 }
+

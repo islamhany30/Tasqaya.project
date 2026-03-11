@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import { GlobalExceptionFilter } from './common/http-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -19,12 +20,14 @@ async function bootstrap() {
     }),
   );
 
-  // لو بتستخدم Views
+  app.useGlobalFilters(new GlobalExceptionFilter());
+
   app.setBaseViewsDir(join(__dirname, '..', 'views'));
   app.setViewEngine('hbs');
 
-  await app.listen(port);
-  console.log(`🚀 Server running on http://localhost:${port} 🚀`);
-}
+  await app.listen(port); // Why? Because we want to start the server and listen for incoming requests on the specified port. The `app.listen(port)` method is what actually starts the NestJS application and allows it to handle HTTP requests. Without this line, the server would not be running and would not be able to respond to any requests.
 
+  console.log(app);
+  console.log(`🚀 Server is running on http://localhost:${port} 🚀`);
+}
 bootstrap();

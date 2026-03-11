@@ -15,16 +15,15 @@ import { Application } from 'src/entities/Application';
 import { Task } from 'src/entities/Task';
 import { CreateWorkerDto } from './Dto/CreateWorker.dto';
 import { UpdateWorkerDto } from './Dto/UpdateWorker.dto';
-import { GetWorkerJobsQueryDto } from './Dto/GetWorkerJopQuery.Dto';
-import { CreateApplicationDto } from './Dto/CreateApplication.Dto';
+import { PaginationDto } from './Dto/PaginationDto';
+import { GetWorkerJobsQueryDto } from './Dto/GetWorkerJobsQueryDto';
+import { CreateApplicationDto } from './Dto/CreateApplicationDto';
 import { UserRole } from 'src/Enums/User.role';
 import { JobPostStatusEnum } from 'src/Enums/job-post-status.enum';
 import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';
 import { TaskService } from '../Task/Task.service';
-import { PaginationDto } from './Dto/Pagination.Dto';
-
 @Injectable()
 export class WorkerService implements IAuthUser {
   constructor(
@@ -120,6 +119,27 @@ export class WorkerService implements IAuthUser {
     return this.authService.resendVerification(workerId, this);
   }
 
+  async login(dto: { email: string; password: string }): Promise<any> {
+    return this.authService.login(dto.email, dto.password);
+  }
+
+  async forgotPassword(dto: { email: string }): Promise<any> {
+    return this.authService.forgotPassword(dto.email);
+  }
+
+  async verifyResetCode(dto: { email: string; code: string }): Promise<any> {
+    const account = await this.authService['accountRepo'].findOne({ where: { email: dto.email } });
+
+    if (!account) throw new NotFoundException('User not found');
+
+    return this.authService.verifyResetCode(account.id, dto.code);
+  }
+
+  async resetPassword(dto: { email: string; newPassword: string }): Promise<any> {
+    const account = await this.authService['accountRepo'].findOne({ where: { email: dto.email } });
+    if (!account) throw new NotFoundException('User not found');
+    return this.authService.resetPassword(account.id, dto.newPassword);
+  }
 
   async changePassword(supervisorId: number, dto: { oldPassword: string; newPassword: string }): Promise<any> {
     return this.authService.changePassword(supervisorId, dto.oldPassword, dto.newPassword, this);

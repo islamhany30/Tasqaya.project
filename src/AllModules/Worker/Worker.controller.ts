@@ -17,19 +17,19 @@ import {
 } from '@nestjs/common';
 import { WorkerService } from './Worker.service';
 import { CreateWorkerDto } from './Dto/CreateWorker.dto';
+// import { JwtRegisterAuthGuard } from 'src/Auth/auth.guards.register';
 import { VerifyEmailDto } from 'src/Auth/Dto/VerifyEmail.dto';
 import { JwtAccountAuthGuard } from 'src/Auth/auth.guards.account';
-import { LoginDto } from 'src/Auth/Dto/Login.dto';
 import { DeactivateAccountDto } from 'src/Auth/Dto/DeactivateAccount.dto';
 import { ChangePasswordDto } from 'src/Auth/Dto/ChangePassword.dto';
 import { UpdateWorkerDto } from './Dto/UpdateWorker.dto';
-import { PaginationDto } from './Dto/Pagination.Dto';
-import { GetWorkerJobsQueryDto } from './Dto/GetWorkerJopQuery.Dto';
-import { CreateApplicationDto } from './Dto/CreateApplication.Dto';
+import { PaginationDto } from './Dto/PaginationDto';
+import { GetWorkerJobsQueryDto } from './Dto/GetWorkerJobsQueryDto';
+import { CreateApplicationDto } from './Dto/CreateApplicationDto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
 import { diskStorage } from 'multer';
-import * as path from 'path';
+import * as path from 'path';;
 
 @Controller('api/worker')
 export class WorkerController {

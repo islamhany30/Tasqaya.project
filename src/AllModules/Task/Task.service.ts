@@ -1,8 +1,14 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThan, Repository } from 'typeorm';
 import { Task } from '../../entities/Task';
-import { WorkerLevel } from '../../entities/WorkerLevel'; 
+import { WorkerLevel } from '../../entities/WorkerLevel';
 import { CreateTaskDto } from './Dto/Create.task.dto';
 import { TaskApprovalStatusEnum } from '../../Enums/task-approval.enum';
 import { TaskStatusEnum } from '../../Enums/task-status.enum';
@@ -22,7 +28,6 @@ import { TaskWorker } from '../../entities/TaskWorker';
 import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { JobPost } from '../../entities/JobPost';
 import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
-import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
 import { Supervisor } from 'src/entities/Supervisor';
 import { Admin } from 'src/entities/Admin';
 import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
@@ -62,114 +67,112 @@ export class TaskService {
 
 
     private readonly paymentService: PaymentService,
-    private readonly mailService: MailService
-
+    private readonly mailService: MailService,
   ) {}
-async createTaskByCompany(dto: CreateTaskDto, companyId: number) {
-  const startDate = new Date(dto.startDate);
-  const endDate = new Date(dto.endDate);
-  const today = new Date();
+  async createTaskByCompany(dto: CreateTaskDto, companyId: number) {
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+    const today = new Date();
 
-  const minStartDate = new Date();
-  minStartDate.setDate(today.getDate() + 7);
-  if (startDate < minStartDate) {
-    throw new BadRequestException('StartDate must be at least 7 days from today');
-  }
+    const minStartDate = new Date();
+    minStartDate.setDate(today.getDate() + 7);
+    if (startDate < minStartDate) {
+      throw new BadRequestException('StartDate must be at least 7 days from today');
+    }
 
-  if (endDate < startDate) {
-    throw new BadRequestException('EndDate cannot be earlier than StartDate');
-  }
+    if (endDate < startDate) {
+      throw new BadRequestException('EndDate cannot be earlier than StartDate');
+    }
 
-  const levelData = await this.levelRepo.findOne({ where: { levelName: dto.workerLevel } });
-  if (!levelData) {
-    throw new NotFoundException('Worker Level not found in database');
-  }
+    const levelData = await this.levelRepo.findOne({ where: { levelName: dto.workerLevel } });
+    if (!levelData) {
+      throw new NotFoundException('Worker Level not found in database');
+    }
 
-  const diffTime = endDate.getTime() - startDate.getTime();
-  const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  const totalHoursPerWorker = dto.durationHoursPerDay * totalDays;
+    const diffTime = endDate.getTime() - startDate.getTime();
+    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    const totalHoursPerWorker = dto.durationHoursPerDay * totalDays;
 
+    let requiredSupervisors = Math.ceil(dto.requiredWorkers * 0.1);
 
-  let requiredSupervisors = Math.ceil(dto.requiredWorkers * 0.10);
-
-      if (!dto.requiredWorkers || dto.requiredWorkers <= 0) {
+    if (!dto.requiredWorkers || dto.requiredWorkers <= 0) {
       throw new BadRequestException(
-        'Invalid requiredWorkers value. It must be greater than 0 to recalculate task requirements.'
+        'Invalid requiredWorkers value. It must be greater than 0 to recalculate task requirements.',
       );
     }
-  
-  if (dto.requiredWorkers > 0 && requiredSupervisors === 0) {
-    requiredSupervisors = 1;
-  }
 
-  const config = await this.systemconfig.findOne({ where: { id: 1 } }); 
-  const supervisorBonus = config?.globalSupervisorBouns || 400;
-  const feePercent = config?.platformFeePercentage || 0.15;
-  const totalSupervisorsCost = requiredSupervisors * supervisorBonus;
+    if (dto.requiredWorkers > 0 && requiredSupervisors === 0) {
+      requiredSupervisors = 1;
+    }
 
-  const baseWorkersCost = dto.requiredWorkers * totalHoursPerWorker * levelData.companyHourlyRate ;
+    const config = await this.systemconfig.findOne({ where: { id: 1 } });
+    const supervisorBonus = config?.globalSupervisorBouns || 400;
+    const feePercent = config?.platformFeePercentage || 0.15;
+    const totalSupervisorsCost = requiredSupervisors * supervisorBonus;
 
-  const platformFee = baseWorkersCost * feePercent; 
+    const baseWorkersCost = dto.requiredWorkers * totalHoursPerWorker * levelData.companyHourlyRate;
 
-  const totalCost = baseWorkersCost + totalSupervisorsCost + platformFee;
+    const platformFee = baseWorkersCost * feePercent;
 
-const task = this.taskRepo.create({
-    eventName: dto.eventName,
-    location: dto.location,
-    startDate: startDate,
-    endDate: endDate,
-    durationHoursPerDay: dto.durationHoursPerDay,
-    requiredWorkers: dto.requiredWorkers,
-    hasUniform: dto.hasUniform,
-    uniformDescription: dto.uniformDescription,
+    const totalCost = baseWorkersCost + totalSupervisorsCost + platformFee;
 
-    company: { id: companyId } ,
-    workerLevel: levelData,
-    requiredSupervisors: requiredSupervisors,
-    baseWorkersCost: baseWorkersCost,
-    supervisingFees:totalSupervisorsCost,
-    platformFee: platformFee,
-    totalCost: totalCost,
-    genders:dto.gender,
+    const task = this.taskRepo.create({
+      eventName: dto.eventName,
+      location: dto.location,
+      startDate: startDate,
+      endDate: endDate,
+      durationHoursPerDay: dto.durationHoursPerDay,
+      requiredWorkers: dto.requiredWorkers,
+      hasUniform: dto.hasUniform,
+      uniformDescription: dto.uniformDescription,
 
-    approvalStatus: TaskApprovalStatusEnum.PENDING,
-    status: TaskStatusEnum.UNAPPROVED,
-  });
-  
-const savedTask = await this.taskRepo.save(task);
+      company: { id: companyId },
+      workerLevel: levelData,
+      requiredSupervisors: requiredSupervisors,
+      baseWorkersCost: baseWorkersCost,
+      supervisingFees: totalSupervisorsCost,
+      platformFee: platformFee,
+      totalCost: totalCost,
+      genders: dto.gender,
 
-  if (dto.workerTypes && dto.workerTypes.length > 0) {
-    const workerTypesEntities = await this.workerTypeRepo.find({
-      where: { typeName: In(dto.workerTypes) },
+      approvalStatus: TaskApprovalStatusEnum.PENDING,
+      status: TaskStatusEnum.UNAPPROVED,
     });
 
-    if (workerTypesEntities.length !== dto.workerTypes.length) {
-  throw new NotFoundException('One or more worker types not found');
-  }
+    const savedTask = await this.taskRepo.save(task);
 
-    const taskWorkerTypesEntries = workerTypesEntities.map(wt => {
-      return this.taskWorkerTypeRepo.create({
-        taskId: savedTask, 
-        workerTypeId: wt, 
+    if (dto.workerTypes && dto.workerTypes.length > 0) {
+      const workerTypesEntities = await this.workerTypeRepo.find({
+        where: { typeName: In(dto.workerTypes) },
       });
-    });
 
-    await this.taskWorkerTypeRepo.save(taskWorkerTypesEntries);
+      if (workerTypesEntities.length !== dto.workerTypes.length) {
+        throw new NotFoundException('One or more worker types not found');
+      }
+
+      const taskWorkerTypesEntries = workerTypesEntities.map((wt) => {
+        return this.taskWorkerTypeRepo.create({
+          taskId: savedTask,
+          workerTypeId: wt,
+        });
+      });
+
+      await this.taskWorkerTypeRepo.save(taskWorkerTypesEntries);
+    }
+
+    return savedTask;
   }
 
-  return savedTask;
-}
-
-async approveTaskByCompany(taskId: number, companyId: number) {
-    const task = await this.taskRepo.findOne({ 
-      where: { id: taskId, company: { id: companyId } } 
+  async approveTaskByCompany(taskId: number, companyId: number) {
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId, company: { id: companyId } },
     });
 
     if (!task) throw new NotFoundException('Task not found');
 
     const today = new Date();
     const startDate = new Date(task.startDate);
-    
+
     const diffInTime = startDate.getTime() - today.getTime();
     const diffInDays = diffInTime / (1000 * 3600 * 24);
 
@@ -178,7 +181,7 @@ async approveTaskByCompany(taskId: number, companyId: number) {
     }
 
     task.approvalStatus = TaskApprovalStatusEnum.APPROVED;
-    task.status = TaskStatusEnum.PENDING; 
+    task.status = TaskStatusEnum.PENDING;
 
     await this.taskRepo.save(task);
 
@@ -191,81 +194,77 @@ async approveTaskByCompany(taskId: number, companyId: number) {
     return {
       message: 'Task approved successfully.',
       taskId: task.id,
-      estimatedTotal: task.totalCost
+      estimatedTotal: task.totalCost,
     };
-}
-
-async getCompanyApprovedTasks(companyId: number) {
-  
-  return await this.taskRepo.find({
-    where: { 
-      company: { id: companyId },
-      approvalStatus: TaskApprovalStatusEnum.APPROVED 
-    },
-    relations: ['payment'],
-    select: {
-      id: true,
-      eventName: true,
-      startDate: true,
-      totalCost: true,
-      status: true, 
-      payment: {
-        status: true
-      }
-    },
-    order: { createdAt: 'DESC' }, 
-  });
-}
-
-async getCompanyTasksByStatus(companyId: number, status: TaskStatusEnum) {
-  return await this.taskRepo.find({
-    where: {
-      company: { id: companyId },
-      approvalStatus: TaskApprovalStatusEnum.APPROVED, 
-      status: status
-    },
-    order: { createdAt: 'DESC' },
-  });
-}
-
-
-async getTaskDetailsForCompany(taskId: number, companyId: number) {
-  const task = await this.taskRepo.findOne({
-    where: { id: taskId, company: { id: companyId },approvalStatus: TaskApprovalStatusEnum.APPROVED },
-    relations: ['payment', 'workerLevel', 'workerTypes', 'workerTypes.workerTypeId'],  
-  });
-
-  if (!task) {
-    throw new NotFoundException('Task not found or not yet approved');
   }
 
-  return {
-    id: task.id,
-    eventName: task.eventName,
-    location: task.location,
-    startDate: task.startDate,
-    endDate: task.endDate,
-    startTime: task.startDate,
-    endTime: task.endDate,
-    requiredworkers:task.requiredWorkers,
-    requiredsupervisor:task.requiredSupervisors,
-    workerlevel:task.workerLevel,
-    workertype:task.workerTypes,
-    durationHoursPerDay:task.durationHoursPerDay,
-    requiredWorkerStatus:task.requiredWorkerStatus,
+  async getCompanyApprovedTasks(companyId: number) {
+    return await this.taskRepo.find({
+      where: {
+        company: { id: companyId },
+        approvalStatus: TaskApprovalStatusEnum.APPROVED,
+      },
+      relations: ['payment'],
+      select: {
+        id: true,
+        eventName: true,
+        startDate: true,
+        totalCost: true,
+        status: true,
+        payment: {
+          status: true,
+        },
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
 
-    financials: {
-      workerBaseCost:task.baseWorkersCost,
-      supervisingFees:task.supervisingFees,
-      estimatedTotal: task.totalCost,
-      paymentstatues: task.payment.status
-    },
+  async getCompanyTasksByStatus(companyId: number, status: TaskStatusEnum) {
+    return await this.taskRepo.find({
+      where: {
+        company: { id: companyId },
+        approvalStatus: TaskApprovalStatusEnum.APPROVED,
+        status: status,
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
 
-  };
-}
+  async getTaskDetailsForCompany(taskId: number, companyId: number) {
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId, company: { id: companyId }, approvalStatus: TaskApprovalStatusEnum.APPROVED },
+      relations: ['payment', 'workerLevel', 'workerTypes', 'workerTypes.workerTypeId'],
+    });
 
-  
-async updateTask(taskId: number, companyId: number, dto: UpdateTaskDto) {
+    if (!task) {
+      throw new NotFoundException('Task not found or not yet approved');
+    }
+
+    return {
+      id: task.id,
+      eventName: task.eventName,
+      location: task.location,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      startTime: task.startDate,
+      endTime: task.endDate,
+      requiredworkers: task.requiredWorkers,
+      requiredsupervisor: task.requiredSupervisors,
+      workerlevel: task.workerLevel,
+      workertype: task.workerTypes,
+      durationHoursPerDay: task.durationHoursPerDay,
+      requiredWorkerStatus: task.requiredWorkerStatus,
+
+      financials: {
+        workerBaseCost: task.baseWorkersCost,
+        supervisingFees: task.supervisingFees,
+        estimatedTotal: task.totalCost,
+        paymentstatues: task.payment.status,
+      },
+    };
+  }
+
+  async updateTask(taskId: number, companyId: number, dto: UpdateTaskDto) {
     const task = await this.taskRepo.findOne({
       where: { id: taskId, company: { id: companyId } },
       relations: ['workerLevel', 'workerTypes', 'workerTypes.workerTypeId'],
@@ -278,27 +277,27 @@ async updateTask(taskId: number, companyId: number, dto: UpdateTaskDto) {
     }
 
     const today = new Date();
-    
+
     if (dto.startDate) {
       const newStartDate = new Date(dto.startDate);
       const minAllowedDate = new Date();
-      minAllowedDate.setDate(today.getDate() + 7); 
+      minAllowedDate.setDate(today.getDate() + 7);
 
       if (newStartDate < minAllowedDate) {
         throw new BadRequestException('The start date must be at least 7 days from now');
       }
     } else {
-        const currentStartDate = new Date(task.startDate);
-        const minAllowedDate = new Date();
-        minAllowedDate.setDate(today.getDate() + 7);
-        if (currentStartDate < minAllowedDate) {
-            throw new BadRequestException('Cannot update a task that starts in less than 7 days');
-        }
+      const currentStartDate = new Date(task.startDate);
+      const minAllowedDate = new Date();
+      minAllowedDate.setDate(today.getDate() + 7);
+      if (currentStartDate < minAllowedDate) {
+        throw new BadRequestException('Cannot update a task that starts in less than 7 days');
+      }
     }
 
     const startDate = dto.startDate ? new Date(dto.startDate) : new Date(task.startDate);
     const endDate = dto.endDate ? new Date(dto.endDate) : new Date(task.endDate);
-    
+
     let levelData = task.workerLevel;
     if (dto.workerLevel) {
       const fetchedLevel = await this.levelRepo.findOne({ where: { levelName: dto.workerLevel } });
@@ -319,10 +318,10 @@ async updateTask(taskId: number, companyId: number, dto: UpdateTaskDto) {
       });
 
       if (newWorkerTypesEntities.length !== dto.workerTypes.length) {
-    throw new NotFoundException('One or more worker types not found');
-    }
+        throw new NotFoundException('One or more worker types not found');
+      }
 
-      task.workerTypes = newWorkerTypesEntities.map(wt => {
+      task.workerTypes = newWorkerTypesEntities.map((wt) => {
         return this.taskWorkerTypeRepo.create({
           taskId: task,
           workerTypeId: wt,
@@ -335,15 +334,15 @@ async updateTask(taskId: number, companyId: number, dto: UpdateTaskDto) {
     }
 
     if (!dto.requiredWorkers || dto.requiredWorkers <= 0) {
-  throw new BadRequestException(
-    'Invalid requiredWorkers value. It must be greater than 0 to recalculate task requirements.'
-  );
-}
+      throw new BadRequestException(
+        'Invalid requiredWorkers value. It must be greater than 0 to recalculate task requirements.',
+      );
+    }
     if (dto.requiredWorkers || dto.durationHoursPerDay || dto.startDate || dto.endDate || dto.workerLevel) {
       const diffTime = endDate.getTime() - startDate.getTime();
       const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
-      let requiredSupervisors = Math.ceil(task.requiredWorkers * 0.10);
+      let requiredSupervisors = Math.ceil(task.requiredWorkers * 0.1);
       if (task.requiredWorkers > 0 && requiredSupervisors === 0) {
         requiredSupervisors = 1;
       }
@@ -372,213 +371,211 @@ async updateTask(taskId: number, companyId: number, dto: UpdateTaskDto) {
     };
   }
 
+  async deleteTaskByCompany(taskId: number, companyId: number) {
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId, company: { id: companyId } },
+    });
 
-async deleteTaskByCompany(taskId: number, companyId: number) {
-  const task = await this.taskRepo.findOne({
-    where: { id: taskId, company: { id: companyId } }
-  });
+    if (!task) {
+      throw new NotFoundException('Task not found');
+    }
 
-  if (!task) {
-    throw new NotFoundException('Task not found');
-  }
+    if (task.approvalStatus !== TaskApprovalStatusEnum.PENDING) {
+      throw new ForbiddenException(`Cannot delete task. It has already been ${task.approvalStatus.toLowerCase()}`);
+    }
 
-  if (task.approvalStatus !== TaskApprovalStatusEnum.PENDING) {
-    throw new ForbiddenException(
-      `Cannot delete task. It has already been ${task.approvalStatus.toLowerCase()}`
-    );
-  }
-  
-  await this.taskRepo.remove(task);
-
-  return {
-    message: "Task deleted successfully."
-  };
-}
-
-async submitTaskFeedback(TaskID,dto: CreateFeedbackDto, companyId: number) {
-  const task = await this.taskRepo.findOne({
-    where: { 
-      id: TaskID, 
-      company: { id: companyId } 
-    },
-    select: ['id', 'endDate']
-  });
-
-  if (!task) {
-    throw new NotFoundException('Task not found or does not belong to this company');
-  }
-
-  const now = new Date();
-  if (new Date(task.endDate) > now) {
-    throw new BadRequestException('Cannot provide feedback for a task that has not ended yet');
-  }
-
-  const existingFeedback = await this.feedbackRepo.findOne({
-    where: { task: { id: TaskID } }
-  });
-  
-  if (existingFeedback) {
-    throw new BadRequestException('Feedback has already been submitted for this task');
-  }
-
-  const feedback = this.feedbackRepo.create({
-    task: { id: TaskID },
-    company: { id: companyId },
-    rating: dto.Rating,
-    comment: dto.Comment,
-  });
-
-  try {
-    const savedFeedback = await this.feedbackRepo.save(feedback);
+    await this.taskRepo.remove(task);
 
     return {
-      message: "Feedback submitted successfully.",
-      feedback: {
-        FeedbackID: savedFeedback.id,
-        Rating: savedFeedback.rating,
-        CreatedAt: savedFeedback.createdAt
-      }
+      message: 'Task deleted successfully.',
     };
-  } catch (error) {
-    throw new InternalServerErrorException('An error occurred while saving feedback');
   }
-}
 
-async getCompanyFeedbacks(companyId: number) {
-  const feedbacks = await this.feedbackRepo.find({
-    where: { company: { id: companyId } },
-    relations: ['task'],
-    order: { createdAt: 'DESC' }
-  });
+  async submitTaskFeedback(TaskID, dto: CreateFeedbackDto, companyId: number) {
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: TaskID,
+        company: { id: companyId },
+      },
+      select: ['id', 'endDate'],
+    });
 
-  const totalRating = feedbacks.reduce((sum, f) => sum + f.rating, 0);
-  const averageRating = feedbacks.length > 0 ? totalRating / feedbacks.length : 0;
-
-  return {
-    feedbacks: feedbacks.map(f => ({
-      FeedbackID: f.id,
-      TaskID: f.task?.id,
-      EventName: f.task?.eventName,
-      Rating: f.rating,
-      Comment: f.comment,
-      CreatedAt: f.createdAt,
-    })),
-    total: feedbacks.length,
-    averageRating: Number(averageRating.toFixed(1)) 
-  };
-}
-
-async getCompanyDashboardStats(companyId: number) {
-  const taskStats = await this.taskRepo.createQueryBuilder('task')
-    .select('task.status', 'status')
-    .addSelect('COUNT(*)', 'count')
-    .addSelect('SUM(task.requiredWorkers)', 'workersCount')
-    .where('task.companyId = :companyId', { companyId })
-    .andWhere('task.approvalStatus = :approved', { approved: TaskApprovalStatusEnum.APPROVED })
-    .groupBy('task.status')
-    .getRawMany();
-
-  const stats = {
-    [TaskStatusEnum.PENDING]: 0,
-    [TaskStatusEnum.IN_PROGRESS]: 0,
-    [TaskStatusEnum.COMPLETED]: 0,
-    totalWorkersUsed: 0
-  };
-
-  taskStats.forEach(s => {
-    stats[s.status] = parseInt(s.count);
-    if (s.status === TaskStatusEnum.COMPLETED) {
-      stats.totalWorkersUsed = parseInt(s.workersCount) || 0;
+    if (!task) {
+      throw new NotFoundException('Task not found or does not belong to this company');
     }
-  });
 
-  const paymentStats = await this.paymentRepo.createQueryBuilder('payment')
-    .select('payment.status', 'status')
-    .addSelect('SUM(payment.totalAmount)', 'total')
-    .where('payment.companyId = :companyId', { companyId })
-    .groupBy('payment.status')
-    .getRawMany();
+    const now = new Date();
+    if (new Date(task.endDate) > now) {
+      throw new BadRequestException('Cannot provide feedback for a task that has not ended yet');
+    }
 
-  const totalSpent = paymentStats.find(p => p.status === PaymentStatusEnum.PAID)?.total || 0;
-  const pendingPayments = paymentStats.find(p => p.status === PaymentStatusEnum.PENDING)?.total || 0;
+    const existingFeedback = await this.feedbackRepo.findOne({
+      where: { task: { id: TaskID } },
+    });
 
-  const avgResult = await this.feedbackRepo.createQueryBuilder('f')
-    .select('AVG(f.rating)', 'avg')
-    .where('f.companyId = :companyId', { companyId })
-    .getRawOne();
+    if (existingFeedback) {
+      throw new BadRequestException('Feedback has already been submitted for this task');
+    }
 
-  const upcomingTasks = await this.taskRepo.find({
-    where: { 
-      company: { id: companyId }, 
-      startDate: MoreThan(new Date()),
-      approvalStatus: TaskApprovalStatusEnum.APPROVED 
-    },
-    relations: ['taskWorkers'], 
-    order: { startDate: 'ASC' },
-    take: 3
-  });
+    const feedback = this.feedbackRepo.create({
+      task: { id: TaskID },
+      company: { id: companyId },
+      rating: dto.Rating,
+      comment: dto.Comment,
+    });
 
-  return {
-    TotalTasks: Object.values(TaskStatusEnum).reduce((acc, status) => acc + (stats[status] || 0), 0),
-    ActiveTasks: stats[TaskStatusEnum.IN_PROGRESS],
-    CompletedTasks: stats[TaskStatusEnum.COMPLETED],
-    PendingTasks: stats[TaskStatusEnum.PENDING], 
-    TotalSpent: Number(parseFloat(totalSpent).toFixed(2)),
-    PendingPayments: Number(parseFloat(pendingPayments).toFixed(2)),
-    AverageRating: Number(parseFloat(avgResult?.avg || 0).toFixed(1)),
-    TotalWorkersUsed: stats.totalWorkersUsed,
-    UpcomingTasks: upcomingTasks.map(t => ({
-      TaskID: t.id,
-      EventName: t.eventName,
-      StartDate: t.startDate,
-      RequiredWorkers: t.requiredWorkers,
-      AssignedWorkers: t.taskWorkers?.length || 0
-    }))
-  };
-}
+    try {
+      const savedFeedback = await this.feedbackRepo.save(feedback);
 
-async getPendingCompanyTasks(companyId: number): Promise<Task[]> {
-  return await this.taskRepo.find({
-    where: { 
-      company: { id: companyId }, 
-      approvalStatus: TaskApprovalStatusEnum.PENDING 
-    },
-    order: { createdAt: 'DESC' },
-  });
-}
-
-// task.service.ts
-
-async saveWhatsAppLinkAndNotify(taskId: number, link: string) {
-  const taskAssignment = await this.taskSupervisorRepo.findOne({
-    where: { task: { id: taskId } },
-    relations: ['task']
-  });
-
-  if (!taskAssignment) {
-    throw new NotFoundException('You are not assigned as a supervisor for this task');
+      return {
+        message: 'Feedback submitted successfully.',
+        feedback: {
+          FeedbackID: savedFeedback.id,
+          Rating: savedFeedback.rating,
+          CreatedAt: savedFeedback.createdAt,
+        },
+      };
+    } catch (error) {
+      throw new InternalServerErrorException('An error occurred while saving feedback');
+    }
   }
 
-  taskAssignment.whatsAppGroupLink = link;
-  taskAssignment.whatsAppLinkAddedAt = new Date();
-  await this.taskSupervisorRepo.save(taskAssignment);
+  async getCompanyFeedbacks(companyId: number) {
+    const feedbacks = await this.feedbackRepo.find({
+      where: { company: { id: companyId } },
+      relations: ['task'],
+      order: { createdAt: 'DESC' },
+    });
 
-  // 2. جلب كل العمال الـ Confirmed لإرسال اللينك لهم
-  const confirmedWorkers = await this.taskWorkerRepo.find({
-    where: { 
-      task: { id: taskId }, 
-      confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED 
-    },
-    relations: ['worker']
-  });
+    const totalRating = feedbacks.reduce((sum, f) => sum + f.rating, 0);
+    const averageRating = feedbacks.length > 0 ? totalRating / feedbacks.length : 0;
 
-  // 3. إرسال الإيميلات للعمال (اللوب)
-  const emailPromises = confirmedWorkers.map(tw => {
-    if (tw.worker?.email) {
-      return this.mailService.sendMail({
-        to: tw.worker.email,
-        subject: `WhatsApp Group Ready: ${taskAssignment.task.eventName}`,
-        html: `
+    return {
+      feedbacks: feedbacks.map((f) => ({
+        FeedbackID: f.id,
+        TaskID: f.task?.id,
+        EventName: f.task?.eventName,
+        Rating: f.rating,
+        Comment: f.comment,
+        CreatedAt: f.createdAt,
+      })),
+      total: feedbacks.length,
+      averageRating: Number(averageRating.toFixed(1)),
+    };
+  }
+
+  async getCompanyDashboardStats(companyId: number) {
+    const taskStats = await this.taskRepo
+      .createQueryBuilder('task')
+      .select('task.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('SUM(task.requiredWorkers)', 'workersCount')
+      .where('task.companyId = :companyId', { companyId })
+      .andWhere('task.approvalStatus = :approved', { approved: TaskApprovalStatusEnum.APPROVED })
+      .groupBy('task.status')
+      .getRawMany();
+
+    const stats = {
+      [TaskStatusEnum.PENDING]: 0,
+      [TaskStatusEnum.IN_PROGRESS]: 0,
+      [TaskStatusEnum.COMPLETED]: 0,
+      totalWorkersUsed: 0,
+    };
+
+    taskStats.forEach((s) => {
+      stats[s.status] = parseInt(s.count);
+      if (s.status === TaskStatusEnum.COMPLETED) {
+        stats.totalWorkersUsed = parseInt(s.workersCount) || 0;
+      }
+    });
+
+    const paymentStats = await this.paymentRepo
+      .createQueryBuilder('payment')
+      .select('payment.status', 'status')
+      .addSelect('SUM(payment.totalAmount)', 'total')
+      .where('payment.companyId = :companyId', { companyId })
+      .groupBy('payment.status')
+      .getRawMany();
+
+    const totalSpent = paymentStats.find((p) => p.status === PaymentStatusEnum.PAID)?.total || 0;
+    const pendingPayments = paymentStats.find((p) => p.status === PaymentStatusEnum.PENDING)?.total || 0;
+
+    const avgResult = await this.feedbackRepo
+      .createQueryBuilder('f')
+      .select('AVG(f.rating)', 'avg')
+      .where('f.companyId = :companyId', { companyId })
+      .getRawOne();
+
+    const upcomingTasks = await this.taskRepo.find({
+      where: {
+        company: { id: companyId },
+        startDate: MoreThan(new Date()),
+        approvalStatus: TaskApprovalStatusEnum.APPROVED,
+      },
+      relations: ['taskWorkers'],
+      order: { startDate: 'ASC' },
+      take: 3,
+    });
+
+    return {
+      TotalTasks: Object.values(TaskStatusEnum).reduce((acc, status) => acc + (stats[status] || 0), 0),
+      ActiveTasks: stats[TaskStatusEnum.IN_PROGRESS],
+      CompletedTasks: stats[TaskStatusEnum.COMPLETED],
+      PendingTasks: stats[TaskStatusEnum.PENDING],
+      TotalSpent: Number(parseFloat(totalSpent).toFixed(2)),
+      PendingPayments: Number(parseFloat(pendingPayments).toFixed(2)),
+      AverageRating: Number(parseFloat(avgResult?.avg || 0).toFixed(1)),
+      TotalWorkersUsed: stats.totalWorkersUsed,
+      UpcomingTasks: upcomingTasks.map((t) => ({
+        TaskID: t.id,
+        EventName: t.eventName,
+        StartDate: t.startDate,
+        RequiredWorkers: t.requiredWorkers,
+        AssignedWorkers: t.taskWorkers?.length || 0,
+      })),
+    };
+  }
+
+  async getPendingCompanyTasks(companyId: number): Promise<Task[]> {
+    return await this.taskRepo.find({
+      where: {
+        company: { id: companyId },
+        approvalStatus: TaskApprovalStatusEnum.PENDING,
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async saveWhatsAppLinkAndNotify(taskId: number, link: string) {
+    const taskAssignment = await this.taskSupervisorRepo.findOne({
+      where: { task: { id: taskId } },
+      relations: ['task'],
+    });
+
+    if (!taskAssignment) {
+      throw new NotFoundException('You are not assigned as a supervisor for this task');
+    }
+
+    taskAssignment.whatsAppGroupLink = link;
+    taskAssignment.whatsAppLinkAddedAt = new Date();
+    await this.taskSupervisorRepo.save(taskAssignment);
+
+    // 2. جلب كل العمال الـ Confirmed لإرسال اللينك لهم
+    const confirmedWorkers = await this.taskWorkerRepo.find({
+      where: {
+        task: { id: taskId },
+        confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+      },
+      relations: ['worker'],
+    });
+
+    // 3. إرسال الإيميلات للعمال (اللوب)
+    const emailPromises = confirmedWorkers.map((tw) => {
+      if (tw.worker?.email) {
+        return this.mailService.sendMail({
+          to: tw.worker.email,
+          subject: `WhatsApp Group Ready: ${taskAssignment.task.eventName}`,
+          html: `
           <div style="direction: ltr; font-family: Arial; padding: 20px; border: 1px solid #1a73e8; border-radius: 8px;">
             <h2 style="color: #1a73e8;">Hello ${tw.worker.fullName}!</h2>
             <p>The WhatsApp group for <b>${taskAssignment.task.eventName}</b> is now active.</p>
@@ -587,54 +584,139 @@ async saveWhatsAppLinkAndNotify(taskId: number, link: string) {
               Join WhatsApp Group
             </a>
           </div>
-        `
-      });
-    }
-  });
+        `,
+        });
+      }
+    });
 
-  await Promise.all(emailPromises);
+    await Promise.all(emailPromises);
 
-  return { success: true, message: 'Link updated and workers notified' };
-}
-
-async getConfirmedWorkers(taskId: number, companyId: number) {
-  const task = await this.taskRepo.findOne({
-    where: { 
-      id: taskId, 
-      company: { id: companyId },
-      requiredWorkerStatus: requiredWorkersStatusEnum.COMPLETED 
-    },
-  });
-
-  if (!task) {
-    throw new BadRequestException(
-      'Task not found, does not belong to your company'
-    );
+    return { success: true, message: 'Link updated and workers notified' };
   }
 
-  const confirmedWorkers = await this.taskWorkerRepo.find({
-    where: { 
-      task: { id: taskId },
-      confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED 
-    },
-    relations: ['worker'], 
-  });
+  async getConfirmedWorkers(taskId: number, companyId: number) {
+    const task = await this.taskRepo.findOne({
+      where: {
+        id: taskId,
+        company: { id: companyId },
+        requiredWorkerStatus: requiredWorkersStatusEnum.COMPLETED,
+      },
+    });
 
-  return confirmedWorkers.map(tw => ({
-    id: tw.worker.id,
-    fullName: tw.worker.fullName,
-    profilePicture: tw.worker.profileImage || 'default-avatar-url',
-  }));
-}
+    if (!task) {
+      throw new BadRequestException('Task not found, does not belong to your company');
+    }
 
-private async createJobPostForTask(task: Task) {
-  const jobPost = this.jobPostRepo.create({
-    task: { id: task.id },
-    maxAllowedWorkers: task.requiredWorkers,
-    status: JobPostStatusEnum.OPEN,
-  });
-  return await this.jobPostRepo.save(jobPost);
-}
+    const confirmedWorkers = await this.taskWorkerRepo.find({
+      where: {
+        task: { id: taskId },
+        confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+      },
+      relations: ['worker'],
+    });
+
+    return confirmedWorkers.map((tw) => ({
+      id: tw.worker.id,
+      fullName: tw.worker.fullName,
+      profilePicture: tw.worker.profileImage || 'default-avatar-url',
+    }));
+  }
+
+  private async createJobPostForTask(task: Task) {
+    const publishedAt = new Date();
+
+    const deadline = new Date(task.startDate);
+    deadline.setHours(deadline.getHours() - 48);
+
+    const jobPost = this.jobPostRepo.create({
+      task: task,
+      maxAllowedWorkers: task.requiredWorkers,
+      status: JobPostStatusEnum.OPEN,
+      publishedAt,
+      deadline,
+    });
+    return await this.jobPostRepo.save(jobPost);
+  }
+
+  async filterJobPostWorkers(jobPostId: number): Promise<void> {
+    const jobPost = await this.jobPostRepo.findOne({
+      where: { id: jobPostId },
+      relations: ['task'],
+    });
+
+    if (!jobPost) throw new NotFoundException('Job post not found');
+
+    if (jobPost.status === JobPostStatusEnum.CLOSED) return;
+
+    const task = jobPost.task;
+    const requiredWorkers = task.requiredWorkers;
+    const BACKUP_COUNT = 3;
+    const totalToSelect = requiredWorkers + 3;
+
+    //Filter by reliabilty rate first
+    const rankedApplications = await this.applicationRepo
+      .createQueryBuilder('app')
+      .innerJoinAndSelect('app.worker', 'worker')
+      .where('app.jobPostId = :jobPostId', { jobPostId })
+      .andWhere('app.status = :status', { status: ApplicationStatusEnum.PENDING })
+      .orderBy('worker.reliabilityRate', 'DESC')
+      .addOrderBy('app.appliedAt', 'ASC')
+      .addOrderBy('worker.score', 'DESC')
+      .addOrderBy('worker.completedTasks', 'DESC')
+      .getMany();
+
+    const selected = rankedApplications.slice(0, totalToSelect); // array of selected applications (including backups)
+    const rejected = rankedApplications.slice(totalToSelect);
+
+    //create TaskWorker records
+    const taskWorkerRecords: TaskWorker[] = selected.map((app, index) => {
+      const isPrimary = index < requiredWorkers; // index here is based on the ranked list, not the original applications array
+
+      const record = this.taskWorkerRepo.create({
+        task: task,
+        worker: app.worker,
+        assignmentType: isPrimary ? AssignmentTypeEnum.PRIMARY : AssignmentTypeEnum.BACKUP,
+        backupOrder: isPrimary ? undefined : index - requiredWorkers + 1,
+        confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
+      });
+
+      return record;
+    });
+    await this.taskWorkerRepo.save(taskWorkerRecords);
+
+    //Update Application statuses
+    const primaryIds = selected.slice(0, requiredWorkers).map((a) => a.id);
+    const backupIds = selected.slice(requiredWorkers).map((a) => a.id);
+    const rejectedIds = rejected.map((a) => a.id);
+
+    if (primaryIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.ACCEPTED })
+        .whereInIds(primaryIds)
+        .execute();
+
+    if (backupIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.BACKUP })
+        .whereInIds(backupIds)
+        .execute();
+
+    if (rejectedIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.REJECTED })
+        .whereInIds(rejectedIds)
+        .execute();
+
+    //Close the job post
+    await this.jobPostRepo.update(jobPostId, { status: JobPostStatusEnum.CLOSED });
+  }
+
 
 private async assignSupervisorsToTask(task: Task): Promise<void> {
   const config = await this.systemconfig.findOne({ where: { id: 1 } });
@@ -753,83 +835,4 @@ if (availableSupervisors.length === 0) {
 
   await Promise.all(emailPromises);
 }
-
-async filterJobPostWorkers(jobPostId: number): Promise<void> {
-    const jobPost = await this.jobPostRepo.findOne({
-      where: { id: jobPostId },
-      relations: ['task'],
-    });
-
-    if (!jobPost) throw new NotFoundException('Job post not found');
-
-    if (jobPost.status === JobPostStatusEnum.CLOSED) return;
-
-    const task = jobPost.task;
-    const requiredWorkers = task.requiredWorkers;
-    const BACKUP_COUNT = 3;
-    const totalToSelect = requiredWorkers + 3;
-
-    //Filter by reliabilty rate first
-    const rankedApplications = await this.applicationRepo
-      .createQueryBuilder('app')
-      .innerJoinAndSelect('app.worker', 'worker')
-      .where('app.jobPostId = :jobPostId', { jobPostId })
-      .andWhere('app.status = :status', { status: ApplicationStatusEnum.PENDING })
-      .orderBy('worker.reliabilityRate', 'DESC')
-      .addOrderBy('app.appliedAt', 'ASC')
-      .addOrderBy('worker.score', 'DESC')
-      .addOrderBy('worker.completedTasks', 'DESC')
-      .getMany();
-
-    const selected = rankedApplications.slice(0, totalToSelect); // array of selected applications (including backups)
-    const rejected = rankedApplications.slice(totalToSelect);
-
-    //create TaskWorker records
-    const taskWorkerRecords: TaskWorker[] = selected.map((app, index) => {
-      const isPrimary = index < requiredWorkers; // index here is based on the ranked list, not the original applications array
-
-      const record = this.taskWorkerRepo.create({
-        task: task,
-        worker: app.worker,
-        assignmentType: isPrimary ? AssignmentTypeEnum.PRIMARY : AssignmentTypeEnum.BACKUP,
-        backupOrder: isPrimary ? undefined : index - requiredWorkers + 1,
-        confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
-      });
-
-      return record;
-    });
-    await this.taskWorkerRepo.save(taskWorkerRecords);
-
-    //Update Application statuses
-    const primaryIds = selected.slice(0, requiredWorkers).map((a) => a.id);
-    const backupIds = selected.slice(requiredWorkers).map((a) => a.id);
-    const rejectedIds = rejected.map((a) => a.id);
-
-    if (primaryIds.length > 0)
-      await this.applicationRepo
-        .createQueryBuilder()
-        .update()
-        .set({ status: ApplicationStatusEnum.ACCEPTED })
-        .whereInIds(primaryIds)
-        .execute();
-
-    if (backupIds.length > 0)
-      await this.applicationRepo
-        .createQueryBuilder()
-        .update()
-        .set({ status: ApplicationStatusEnum.BACKUP })
-        .whereInIds(backupIds)
-        .execute();
-
-    if (rejectedIds.length > 0)
-      await this.applicationRepo
-        .createQueryBuilder()
-        .update()
-        .set({ status: ApplicationStatusEnum.REJECTED })
-        .whereInIds(rejectedIds)
-        .execute();
-
-    //Close the job post
-    await this.jobPostRepo.update(jobPostId, { status: JobPostStatusEnum.CLOSED });
-  }
 }

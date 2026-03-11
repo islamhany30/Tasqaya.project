@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Company } from '../../entities/Company';
@@ -40,11 +37,9 @@ export class CompanyService implements IAuthUser {
   }
 
   async createUser(data: Partial<Company>, manager?: EntityManager): Promise<any> {
-  const repo = manager 
-    ? manager.getRepository(Company) 
-    : this.companyRepository;
-  const company = repo.create(data);
-  return await repo.save(company);
+    const repo = manager ? manager.getRepository(Company) : this.companyRepository;
+    const company = repo.create(data);
+    return await repo.save(company);
   }
 
   async setVerificationCode(userId: number, code: string, expiry: Date): Promise<any> {
@@ -102,7 +97,6 @@ export class CompanyService implements IAuthUser {
   async resendVerification(companyId: number): Promise<any> {
     return this.authService.resendVerification(companyId, this);
   }
-
 
   async changePassword(companyId: number, dto: { oldPassword: string; newPassword: string }): Promise<any> {
     return this.authService.changePassword(companyId, dto.oldPassword, dto.newPassword, this);
@@ -190,6 +184,4 @@ export class CompanyService implements IAuthUser {
       },
     };
   }
-
-  
 }

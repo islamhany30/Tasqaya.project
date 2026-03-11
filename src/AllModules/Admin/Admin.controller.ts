@@ -130,4 +130,16 @@ export class AdminController {
   async changeWorkerStatus(@Param('id', ParseIntPipe) id: number, @Body() statusDto: ChangeAccountStatusDto) {
     return this.adminService.changeWorkerStatus(id, statusDto);
   }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/worker/:id')
+  async getWorkerById(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.getWorkerByID(id);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('manage/workers')
+  async getAllWorkers() {
+    return this.adminService.getAllWorkers();
+  }
 }

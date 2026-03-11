@@ -1,7 +1,14 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { Account } from "../entities/Accounts";
-import { DataSource } from "typeorm";
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { Account } from '../entities/Accounts';
+import { DataSource } from 'typeorm';
 import { Request } from 'express';
 
 @Injectable()
@@ -25,10 +32,10 @@ export class JwtAccountAuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync(token);
       const { sub, role } = payload;
 
-      const roleKey = role.toLowerCase(); 
-      const account = await this.dataSource.getRepository(Account).findOne({ 
+      const roleKey = role.toLowerCase();
+      const account = await this.dataSource.getRepository(Account).findOne({
         where: { id: sub },
-        relations: [roleKey] 
+        relations: [roleKey],
       });
 
       if (!account) {
@@ -42,10 +49,10 @@ export class JwtAccountAuthGuard implements CanActivate {
       const profile = account[roleKey];
 
       request['user'] = {
-        sub: profile.id,       
+        sub: profile.id,
         role: account.role,
         email: account.email,
-        id:account.id
+        id: account.id,
       };
 
       return true;

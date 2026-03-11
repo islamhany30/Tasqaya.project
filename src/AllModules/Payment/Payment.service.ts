@@ -14,73 +14,64 @@ export class PaymentService {
   constructor(
     @InjectRepository(Payment) private paymentRepo: Repository<Payment>,
     @InjectRepository(Task) private taskRepo: Repository<Task>,
-    private readonly httpService: HttpService
+    private readonly httpService: HttpService,
   ) {}
 
+  validatePaymobHmac(hmacFromUrl: string, payload: any): boolean {
+    const secureHash = process.env.PAYMOB_HMAC_SECRET || 'YOUR_PAYMOB_HMAC_SECRET';
 
-validatePaymobHmac(hmacFromUrl: string, payload: any): boolean {
-  const secureHash = process.env.PAYMOB_HMAC_SECRET || 'YOUR_PAYMOB_HMAC_SECRET';
+    // fields بالترتيب الرسمي حسب Paymob docs
+    const keys = [
+      'amount_cents',
+      'created_at',
+      'currency',
+      'error_occured',
+      'has_parent_transaction',
+      'id',
+      'integration_id',
+      'is_3d_secure',
+      'is_auth',
+      'is_capture',
+      'is_refunded',
+      'is_standalone_payment',
+      'is_voided',
+      'order.id',
+      'owner',
+      'pending',
+      'source_data.pan',
+      'source_data.sub_type',
+      'source_data.type',
+      'success',
+    ];
 
-  const keys = [
-    'amount_cents',
-    'created_at',
-    'currency',
-    'error_occured',
-    'has_parent_transaction',
-    'id',
-    'integration_id',
-    'is_3d_secure',
-    'is_auth',
-    'is_capture',
-    'is_refunded',
-    'is_standalone_payment',
-    'is_voided',
-    'order.id',
-    'owner',
-    'pending',
-    'source_data.pan',
-    'source_data.sub_type',
-    'source_data.type',
-    'success',
-  ];
+    const dataString = keys.map((key) => this.getNestedValue(payload, key)).join('');
+    const hashed = crypto.createHmac('sha512', secureHash).update(dataString).digest('hex');
+    return hashed === hmacFromUrl;
+  }
 
-  const dataString = keys
-    .map(k => {
-      const parts = k.split('.');
-      let value: any = payload;
-      for (const part of parts) value = value?.[part];
-      return String(value ?? '');
-    })
-    .join('');
-
-  const hashed = crypto.createHmac('sha512', secureHash).update(dataString).digest('hex');
-  return hashed === hmacFromUrl;
-}
+  private getNestedValue(obj: any, path: string): string {
+    return path.split('.').reduce((current, prop) => current?.[prop] ?? '', obj);
+  }
 
   async createInitialInvoice(task: Task, companyId: number) {
-  const merchantOrderId = `ORDER_${task.id}_${Date.now()}`;
+    const merchantOrderId = `ORDER_${task.id}_${Date.now()}`;
 
-  const invoice = this.paymentRepo.create({
-    task: { id: task.id },
-    company: { id: companyId }, 
-    workersCost: task.baseWorkersCost,
-    platformFee: task.platformFee,
-    supervisingFees: task.supervisingFees,
-    totalAmount: task.totalCost,
-    status: PaymentStatusEnum.PENDING,
-    transactionId: merchantOrderId, 
-    paymentMethod: 'PENDING',
-  });
+    const invoice = this.paymentRepo.create({
+      task: { id: task.id },
+      company: { id: companyId },
+      workersCost: task.baseWorkersCost,
+      platformFee: task.platformFee,
+      supervisingFees: task.supervisingFees,
+      totalAmount: task.totalCost,
+      status: PaymentStatusEnum.PENDING,
+      transactionId: merchantOrderId,
+      paymentMethod: 'PENDING',
+    });
 
-  return await this.paymentRepo.save(invoice);
-}
+    return await this.paymentRepo.save(invoice);
+  }
 
-
-async processSuccessfulPayment(
-    paymentId: number | string,
-    bankTransactionId: string,
-    method: PaymentMethodEnum,
-  ) {
+  async processSuccessfulPayment(paymentId: number | string, bankTransactionId: string, method: PaymentMethodEnum) {
     const payment = await this.paymentRepo.findOne({ where: { id: Number(paymentId) } });
     if (!payment) throw new NotFoundException('Payment not found');
 
@@ -89,65 +80,64 @@ async processSuccessfulPayment(
     payment.bankTransactionId = bankTransactionId;
     payment.paidAt = new Date();
 
-
     await this.paymentRepo.save(payment);
     return { status: 'success', paymentId, method, bankTransactionId };
   }
 
   async getCompanyInvoices(companyId: number): Promise<Payment[]> {
-  return await this.paymentRepo.find({
-    where: { company: { id: companyId } },
-    relations: ['task'], 
-    select: {
-      id: true,
-      totalAmount: true,
-      status: true,
-      paidAt: true,
-      task: {
-        eventName: true,
+    return await this.paymentRepo.find({
+      where: { company: { id: companyId } },
+      relations: ['task'],
+      select: {
+        id: true,
+        totalAmount: true,
+        status: true,
+        paidAt: true,
+        task: {
+          eventName: true,
+        },
       },
-    },
-    order: { createdAt: 'DESC' },
-  });
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async getCompanyInvoiceDetails(paymentId: number, companyId: number) {
-  const payment = await this.paymentRepo.findOne({
-    where: { 
-      id: paymentId, 
-      company: { id: companyId } 
-    },
-    relations: ['task'], 
-  });
+    const payment = await this.paymentRepo.findOne({
+      where: {
+        id: paymentId,
+        company: { id: companyId },
+      },
+      relations: ['task'],
+    });
 
-  if (!payment) {
-    throw new NotFoundException('Invoice not found or unauthorized');
-  }
+    if (!payment) {
+      throw new NotFoundException('Invoice not found or unauthorized');
+    }
 
-  return {
-    invoice: {
-      id: payment.id,
-      status: payment.status,
-      totalAmount: payment.totalAmount,
-      transactionId: payment.transactionId,
-      paymentMethod: payment.paymentMethod,
-      paidAt: payment.paidAt,
-      createdAt: payment.createdAt,
-    },
-    costBreakdown: {
-      workersCost: payment.workersCost,
+    return {
+      invoice: {
+        id: payment.id,
+        status: payment.status,
+        totalAmount: payment.totalAmount,
+        transactionId: payment.transactionId,
+        paymentMethod: payment.paymentMethod,
+        paidAt: payment.paidAt,
+        createdAt: payment.createdAt,
+      },
+      costBreakdown: {
+        workersCost: payment.workersCost,
         supervisingFees: payment.supervisingFees,
         platformFee: payment.platformFee,
-        totalAmount: payment.totalAmount
-    },
-    taskDetails: {
-      id: payment.task.id,
-      eventName: payment.task.eventName,
-      startDate: payment.task.startDate,
-      endDate: payment.task.endDate,
-      location: payment.task.location,
-    }
-  };
+        totalAmount: payment.totalAmount,
+      },
+      taskDetails: {
+        id: payment.task.id,
+        eventName: payment.task.eventName,
+        startDate: payment.task.startDate,
+        endDate: payment.task.endDate,
+        location: payment.task.location,
+      },
+    };
   }
 
   async initiatePayment(
@@ -176,10 +166,9 @@ async processSuccessfulPayment(
 
     try {
       // 2️⃣ Authenticate مع Paymob للحصول على authToken
-      const authResponse = await this.httpService.axiosRef.post(
-        'https://accept.paymob.com/api/auth/tokens',
-        { api_key: process.env.PAYMOB_API_KEY },
-      );
+      const authResponse = await this.httpService.axiosRef.post('https://accept.paymob.com/api/auth/tokens', {
+        api_key: process.env.PAYMOB_API_KEY,
+      });
       const authToken: string = authResponse.data.token;
 
       // 3️⃣ تحويل المبلغ للقروش (Cents)
@@ -189,17 +178,14 @@ async processSuccessfulPayment(
       const merchantOrderId = `payment-${payment.id}-${Date.now()}`;
 
       // 4️⃣ إنشاء Order في Paymob
-      const orderResponse = await this.httpService.axiosRef.post(
-        'https://accept.paymob.com/api/ecommerce/orders',
-        {
-          auth_token: authToken,
-          delivery_needed: false,
-          amount_cents: amountCents,
-          currency: 'EGP',
-          merchant_order_id: merchantOrderId,
-          items: [],
-        },
-      );
+      const orderResponse = await this.httpService.axiosRef.post('https://accept.paymob.com/api/ecommerce/orders', {
+        auth_token: authToken,
+        delivery_needed: false,
+        amount_cents: amountCents,
+        currency: 'EGP',
+        merchant_order_id: merchantOrderId,
+        items: [],
+      });
       const paymobOrderId: string = String(orderResponse.data.id);
 
       // 5️⃣ اختيار integration_id حسب الطريقة

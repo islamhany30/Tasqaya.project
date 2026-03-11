@@ -129,18 +129,17 @@ export class SupervisorController {
 
   @Post(':taskId/attendance')
   @UseGuards(JwtAccountAuthGuard)
-  @UseInterceptors(FileInterceptor('file', {
-    fileFilter: (req, file, callback) => {
-      if (!file.originalname.match(/\.(xlsx|xls)$/)) {
-        return callback(
-          new BadRequestException('Only Excel files (.xlsx, .xls) are allowed'),
-          false,
-        );
-      }
-      callback(null, true);
-    },
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-  }))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      fileFilter: (req, file, callback) => {
+        if (!file.originalname.match(/\.(xlsx|xls)$/)) {
+          return callback(new BadRequestException('Only Excel files (.xlsx, .xls) are allowed'), false);
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    }),
+  )
   async uploadAttendance(
     @Param('taskId', ParseIntPipe) taskId: number,
     @UploadedFile() file: Express.Multer.File,
@@ -159,13 +158,10 @@ export class SupervisorController {
 
   @Get('tasks')
   @UseGuards(JwtAccountAuthGuard)
-  async getMyTasks(
-    @Req() req: any,
-    @Query('status') status?: TaskStatusEnum,
-  ) {
+  async getMyTasks(@Req() req: any, @Query('status') status?: TaskStatusEnum) {
     return this.supervisorService.getMyTasks(Number(req.user.sub), status);
   }
-
+  
   @Get('tasks/:taskId/attendance-template')
   @UseGuards(JwtAccountAuthGuard)
   async getAttendanceTemplate(

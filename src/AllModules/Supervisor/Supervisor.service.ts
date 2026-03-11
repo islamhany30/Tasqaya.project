@@ -60,11 +60,9 @@ export class SupervisorService implements IAuthUser {
   }
 
   async createUser(data: Partial<Supervisor>, manager?: EntityManager): Promise<any> {
-  const repo = manager 
-    ? manager.getRepository(Supervisor) 
-    : this.supervisorRepository;
-  const company = repo.create(data);
-  return await repo.save(company);
+    const repo = manager ? manager.getRepository(Supervisor) : this.supervisorRepository;
+    const company = repo.create(data);
+    return await repo.save(company);
   }
 
   async verifyUser(userId: number): Promise<void> {
@@ -216,129 +214,128 @@ export class SupervisorService implements IAuthUser {
   }
 
   async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
-  // 1. التأكد إن الـ supervisor assigned على التاسك دي
-  const assignment = await this.taskSupervisorRepo.findOne({
-    where: {
-      task: { id: taskId },
-      supervisor: { id: supervisorId },
-    },
-    relations: ['task'],
-  });
-
-  if (!assignment) {
-    throw new NotFoundException('You are not assigned as a supervisor for this task');
-  }
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const taskStart = new Date(assignment.task.startDate);
-  taskStart.setHours(0, 0, 0, 0);
-
-  const taskEnd = new Date(assignment.task.endDate);
-  taskEnd.setHours(0, 0, 0, 0);
-
-  // 2. التأكد إن اليوم ده جوا فترة التاسك
-  if (today < taskStart || today > taskEnd) {
-    throw new BadRequestException('Cannot upload attendance outside the task period');
-  }
-
-const dateOnly = today.toISOString().split('T')[0]; // "2026-03-07"
-
-// 2. تعديل الـ Check
-const existingToday = await this.attendanceRepo.findOne({
-  where: {
-    task: { id: taskId },
-    attendanceDate: dateOnly as any, // هنا الـ TypeORM هيتعامل معاه كـ string
-  },
-});
-
-  if (existingToday) {
-    throw new BadRequestException('Attendance for today has already been uploaded');
-  }
-
-  // 4. parse الـ excel
-  const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const rows: any[] = XLSX.utils.sheet_to_json(sheet);
-
-  if (!rows || rows.length === 0) {
-    throw new BadRequestException('Excel file is empty or has invalid format');
-  }
-
-  // 5. جيب العمال الـ confirmed للتاسك دي
-  const confirmedWorkers = await this.taskWorkerRepo.find({
-    where: {
-      task: { id: taskId },
-      confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
-    },
-    relations: ['worker'],
-  });
-
-  if (confirmedWorkers.length === 0) {
-    throw new BadRequestException('No confirmed workers found for this task');
-  }
-
-  // بناء Map للوصول السريع للـ worker object كامل
-  const workerMap = new Map(confirmedWorkers.map(tw => [tw.worker.id, tw.worker]));
-  const confirmedWorkerIds = new Set(workerMap.keys());
-
-  // 6. بناء الـ attendance records
-  const attendanceRecords = rows
-    .filter(row => confirmedWorkerIds.has(Number(row.workerId)))
-    .map(row => {
-      const worker = workerMap.get(Number(row.workerId));
-
-      const dateStr = today.toISOString().split('T')[0];
-    const checkIn  = row.checkIn  ? new Date(`${dateStr}T${row.checkIn}`)  : null;
-    const checkOut = row.checkOut ? new Date(`${dateStr}T${row.checkOut}`) : null;
-
-      const status = row.status?.toUpperCase() === 'PRESENT'
-        ? AttendanceStatusEnum.PRESENT
-        : AttendanceStatusEnum.ABSENT;
-
-      return this.attendanceRepo.create({
-        task:assignment.task,
-        worker:worker,
-        attendanceDate: today,  
-        checkInTime:checkIn,
-        checkOutTime:checkOut,
-        status,        
-      });
+    // 1. التأكد إن الـ supervisor assigned على التاسك دي
+    const assignment = await this.taskSupervisorRepo.findOne({
+      where: {
+        task: { id: taskId },
+        supervisor: { id: supervisorId },
+      },
+      relations: ['task'],
     });
 
-  if (attendanceRecords.length === 0) {
-    throw new BadRequestException('No valid worker IDs found in the excel file');
+    if (!assignment) {
+      throw new NotFoundException('You are not assigned as a supervisor for this task');
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const taskStart = new Date(assignment.task.startDate);
+    taskStart.setHours(0, 0, 0, 0);
+
+    const taskEnd = new Date(assignment.task.endDate);
+    taskEnd.setHours(0, 0, 0, 0);
+
+    // 2. التأكد إن اليوم ده جوا فترة التاسك
+    if (today < taskStart || today > taskEnd) {
+      throw new BadRequestException('Cannot upload attendance outside the task period');
+    }
+
+    const dateOnly = today.toISOString().split('T')[0]; // "2026-03-07"
+
+    // 3. Check لو الحضور اترفع النهارده قبل كده
+    const existingToday = await this.attendanceRepo.findOne({
+      where: {
+        task: { id: taskId },
+        attendanceDate: dateOnly as any,
+      },
+    });
+
+    if (existingToday) {
+      throw new BadRequestException('Attendance for today has already been uploaded');
+    }
+
+    // 4. parse الـ excel
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+
+    if (!rows || rows.length === 0) {
+      throw new BadRequestException('Excel file is empty or has invalid format');
+    }
+
+    // 5. جيب العمال الـ confirmed للتاسك دي
+    const confirmedWorkers = await this.taskWorkerRepo.find({
+      where: {
+        task: { id: taskId },
+        confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+      },
+      relations: ['worker'],
+    });
+
+    if (confirmedWorkers.length === 0) {
+      throw new BadRequestException('No confirmed workers found for this task');
+    }
+
+    // بناء Map للوصول السريع للـ worker object كامل
+    const workerMap = new Map(confirmedWorkers.map((tw) => [tw.worker.id, tw.worker]));
+    const confirmedWorkerIds = new Set(workerMap.keys());
+
+    // 6. بناء الـ attendance records
+    const attendanceRecords = rows
+      .filter((row) => confirmedWorkerIds.has(Number(row.workerId)))
+      .map((row) => {
+        const worker = workerMap.get(Number(row.workerId));
+
+        const dateStr = today.toISOString().split('T')[0];
+        const checkIn = row.checkIn ? new Date(`${dateStr}T${row.checkIn}`) : null;
+        const checkOut = row.checkOut ? new Date(`${dateStr}T${row.checkOut}`) : null;
+
+        const status =
+          row.status?.toUpperCase() === 'PRESENT' ? AttendanceStatusEnum.PRESENT : AttendanceStatusEnum.ABSENT;
+
+        return this.attendanceRepo.create({
+          task: assignment.task,
+          worker: worker,
+          attendanceDate: today,
+          checkInTime: checkIn,
+          checkOutTime: checkOut,
+          status,
+        });
+      });
+
+    if (attendanceRecords.length === 0) {
+      throw new BadRequestException('No valid worker IDs found in the excel file');
+    }
+
+    // 7. حفظ الـ attendance records
+    await this.attendanceRepo.save(attendanceRecords);
+
+    // 8. تخزين الـ excel blob في TaskSupervisor للأرشفة
+    assignment.attendanceFile = file.buffer;
+    assignment.attendanceUploadedAt = new Date();
+    await this.taskSupervisorRepo.save(assignment);
+
+    return {
+      message: `Attendance uploaded successfully for ${attendanceRecords.length} workers`,
+      date: today.toISOString().split('T')[0],
+      recordsCount: attendanceRecords.length,
+    };
   }
 
-  // 7. حفظ الـ attendance records
-  await this.attendanceRepo.save(attendanceRecords);
-
-  // 8. تخزين الـ excel blob في TaskSupervisor للأرشفة
-  assignment.attendanceFile     = file.buffer;
-  assignment.attendanceUploadedAt = new Date();
-  await this.taskSupervisorRepo.save(assignment);
-
-  return {
-    message: `Attendance uploaded successfully for ${attendanceRecords.length} workers`,
-    date:         today.toISOString().split('T')[0],
-    recordsCount: attendanceRecords.length,
-  };
-}
-
-async getDashboard(supervisorId: number): Promise<any> {
+  async getDashboard(supervisorId: number): Promise<any> {
     // جيب كل assignments الـ supervisor
     const assignments = await this.taskSupervisorRepo.find({
       where: { supervisor: { id: supervisorId } },
       relations: ['task'],
     });
 
-    const tasks = assignments.map(a => a.task);
+    const tasks = assignments.map((a) => a.task);
 
-    const totalTasks     = tasks.length;
-    const currentTasks   = tasks.filter(t => t.status === TaskStatusEnum.IN_PROGRESS).length;
-    const completedTasks = tasks.filter(t => t.status === TaskStatusEnum.COMPLETED).length;
-    const upcomingTasks  = tasks.filter(t => t.status === TaskStatusEnum.PENDING).length;
+    const totalTasks = tasks.length;
+    const currentTasks = tasks.filter((t) => t.status === TaskStatusEnum.IN_PROGRESS).length;
+    const completedTasks = tasks.filter((t) => t.status === TaskStatusEnum.COMPLETED).length;
+    const upcomingTasks = tasks.filter((t) => t.status === TaskStatusEnum.PENDING).length;
 
     const payouts = await this.supervisorPayoutRepo.find({
       where: {
@@ -349,9 +346,10 @@ async getDashboard(supervisorId: number): Promise<any> {
 
     const totalEarnings = payouts.reduce((sum, p) => sum + Number(p.amount), 0);
 
-    const nextTask = tasks
-      .filter(t => t.status === TaskStatusEnum.PENDING)
-      .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0] || null;
+    const nextTask =
+      tasks
+        .filter((t) => t.status === TaskStatusEnum.PENDING)
+        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0] || null;
 
     return {
       totalTasks,
@@ -375,137 +373,136 @@ async getDashboard(supervisorId: number): Promise<any> {
       order: { task: { startDate: 'ASC' } },
     });
 
-    const tasks = assignments.map(a => ({
-      id:                  a.task.id,
-      eventName:           a.task.eventName,
-      location:            a.task.location,
-      startDate:           a.task.startDate,
-      endDate:             a.task.endDate,
-      status:              a.task.status,
-      requiredWorkers:     a.task.requiredWorkers,
+    const tasks = assignments.map((a) => ({
+      id: a.task.id,
+      eventName: a.task.eventName,
+      location: a.task.location,
+      startDate: a.task.startDate,
+      endDate: a.task.endDate,
+      status: a.task.status,
+      requiredWorkers: a.task.requiredWorkers,
       durationHoursPerDay: a.task.durationHoursPerDay,
-      workerLevel:         a.task.workerLevel?.levelName,
-      supervisorBonus:     a.supervisorBonus,
-      whatsAppGroupLink:   a.whatsAppGroupLink,
+      workerLevel: a.task.workerLevel?.levelName,
+      supervisorBonus: a.supervisorBonus,
+      whatsAppGroupLink: a.whatsAppGroupLink,
     }));
 
     return { count: tasks.length, tasks };
   }
 
   async getAttendanceTemplate(supervisorId: number, taskId: number): Promise<{ buffer: Buffer; fileName: string }> {
-  // 1. التأكد إن الـ supervisor assigned على التاسك دي
-  const assignment = await this.taskSupervisorRepo.findOne({
-    where: {
-      task: { id: taskId },
-      supervisor: { id: supervisorId },
-    },
-    relations: ['task'],
-  });
+    // 1. التأكد إن الـ supervisor assigned على التاسك دي
+    const assignment = await this.taskSupervisorRepo.findOne({
+      where: {
+        task: { id: taskId },
+        supervisor: { id: supervisorId },
+      },
+      relations: ['task'],
+    });
 
-  if (!assignment) {
-    throw new NotFoundException('You are not assigned as a supervisor for this task');
+    if (!assignment) {
+      throw new NotFoundException('You are not assigned as a supervisor for this task');
+    }
+
+    // 2. جيب العمال الـ confirmed في التاسك دي
+    const confirmedWorkers = await this.taskWorkerRepo.find({
+      where: {
+        task: { id: taskId },
+        confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+      },
+      relations: ['worker'],
+    });
+
+    if (confirmedWorkers.length === 0) {
+      throw new BadRequestException(
+        'No confirmed workers yet for this task — attendance template is not available until workers confirm their attendance',
+      );
+    }
+
+    // 3. بناء الـ rows
+    const rows = confirmedWorkers.map((tw) => ({
+      workerId: tw.worker.id,
+      workerName: tw.worker.fullName,
+      checkIn: '',
+      checkOut: '',
+      status: '',
+    }));
+
+    // 4. بناء الـ worksheet
+    const worksheet = XLSX.utils.json_to_sheet(rows, {
+      header: ['workerId', 'workerName', 'checkIn', 'checkOut', 'status'],
+    });
+
+    // تعريض الأعمدة
+    worksheet['!cols'] = [
+      { wch: 12 }, // workerId
+      { wch: 25 }, // workerName
+      { wch: 12 }, // checkIn   — format: HH:mm  e.g. 08:00
+      { wch: 12 }, // checkOut  — format: HH:mm  e.g. 16:00
+      { wch: 15 }, // status    — PRESENT or ABSENT
+    ];
+
+    // تثبيت الـ header row
+    worksheet['!freeze'] = { xSplit: 0, ySplit: 1 } as any;
+
+    // تعليقات توضيحية على الـ headers
+    if (!worksheet['A1'].c) worksheet['A1'].c = [];
+    worksheet['A1'].c.push({ a: 'System', t: 'Do not modify workerId' });
+
+    if (!worksheet['B1'].c) worksheet['B1'].c = [];
+    worksheet['B1'].c.push({ a: 'System', t: 'Do not modify workerName' });
+
+    if (!worksheet['C1'].c) worksheet['C1'].c = [];
+    worksheet['C1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 08:00' });
+
+    if (!worksheet['D1'].c) worksheet['D1'].c = [];
+    worksheet['D1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 16:00' });
+
+    if (!worksheet['E1'].c) worksheet['E1'].c = [];
+    worksheet['E1'].c.push({ a: 'System', t: 'Allowed values: PRESENT or ABSENT only' });
+
+    // 5. بناء الـ workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const fileName = `attendance_task_${taskId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    return { buffer, fileName };
   }
 
-  // 2. جيب العمال الـ confirmed في التاسك دي
-  const confirmedWorkers = await this.taskWorkerRepo.find({
-    where: {
-      task: { id: taskId },
-      confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
-    },
-    relations: ['worker'],
-  });
+  async getTaskDetailsForSupervisor(taskId: number, supervisorId: number) {
+    const assignment = await this.taskSupervisorRepo.findOne({
+      where: {
+        task: { id: taskId },
+        supervisor: { id: supervisorId },
+      },
+      relations: ['task', 'task.workerLevel', 'task.workerTypes', 'task.workerTypes.workerTypeId', 'task.payment'],
+    });
 
-  if (confirmedWorkers.length === 0) {
-    throw new BadRequestException(
-      'No confirmed workers yet for this task — attendance template is not available until workers confirm their attendance',
-    );
+    if (!assignment) {
+      throw new NotFoundException('Task not found or you are not assigned to it');
+    }
+
+    const task = assignment.task;
+
+    return {
+      id: task.id,
+      eventName: task.eventName,
+      location: task.location,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      requiredWorkers: task.requiredWorkers,
+      requiredSupervisors: task.requiredSupervisors,
+      workerLevel: task.workerLevel,
+      workerTypes: task.workerTypes,
+      durationHoursPerDay: task.durationHoursPerDay,
+      requiredWorkerStatus: task.requiredWorkerStatus,
+      supervisorBonus: assignment.supervisorBonus,
+      whatsAppGroupLink: assignment.whatsAppGroupLink,
+
+      financials: {
+        supervisingFees: task.supervisingFees,
+        paymentStatus: task.payment?.status ?? null,
+      },
+    };
   }
-
-  // 3. بناء الـ rows
-  const rows = confirmedWorkers.map(tw => ({
-    workerId:   tw.worker.id,
-    workerName: tw.worker.fullName, // للمرجع بس — مش بيتقرأ في الـ upload
-    checkIn:    '',
-    checkOut:   '',
-    status:     '',
-  }));
-
-  // 4. بناء الـ worksheet
-  const worksheet = XLSX.utils.json_to_sheet(rows, {
-    header: ['workerId', 'workerName', 'checkIn', 'checkOut', 'status'],
-  });
-
-  // تعريض الأعمدة
-  worksheet['!cols'] = [
-    { wch: 12 }, // workerId
-    { wch: 25 }, // workerName
-    { wch: 12 }, // checkIn   — format: HH:mm  e.g. 08:00
-    { wch: 12 }, // checkOut  — format: HH:mm  e.g. 16:00
-    { wch: 15 }, // status    — PRESENT or ABSENT
-  ];
-
-  // تثبيت الـ header row
-  worksheet['!freeze'] = { xSplit: 0, ySplit: 1 } as any;
-
-  // تعليقات توضيحية على الـ headers
-  if (!worksheet['A1'].c) worksheet['A1'].c = [];
-  worksheet['A1'].c.push({ a: 'System', t: 'Do not modify workerId' });
-
-  if (!worksheet['B1'].c) worksheet['B1'].c = [];
-  worksheet['B1'].c.push({ a: 'System', t: 'Do not modify workerName' });
-
-  if (!worksheet['C1'].c) worksheet['C1'].c = [];
-  worksheet['C1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 08:00' });
-
-  if (!worksheet['D1'].c) worksheet['D1'].c = [];
-  worksheet['D1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 16:00' });
-
-  if (!worksheet['E1'].c) worksheet['E1'].c = [];
-  worksheet['E1'].c.push({ a: 'System', t: 'Allowed values: PRESENT or ABSENT only' });
-
-  // 5. بناء الـ workbook
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
-  const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-  const fileName = `attendance_task_${taskId}_${new Date().toISOString().split('T')[0]}.xlsx`;
-  return { buffer, fileName };
-
-}
-
-async getTaskDetailsForSupervisor(taskId: number, supervisorId: number) {
-  const assignment = await this.taskSupervisorRepo.findOne({
-    where: {
-      task: { id: taskId },
-      supervisor: { id: supervisorId },
-    },
-    relations: ['task', 'task.workerLevel', 'task.workerTypes', 'task.workerTypes.workerTypeId', 'task.payment'],
-  });
-
-  if (!assignment) {
-    throw new NotFoundException('Task not found or you are not assigned to it');
-  }
-
-  const task = assignment.task;
-
-  return {
-    id: task.id,
-    eventName: task.eventName,
-    location: task.location,
-    startDate: task.startDate,
-    endDate: task.endDate,
-    requiredWorkers: task.requiredWorkers,
-    requiredSupervisors: task.requiredSupervisors,
-    workerLevel: task.workerLevel,
-    workerTypes: task.workerTypes,
-    durationHoursPerDay: task.durationHoursPerDay,
-    requiredWorkerStatus: task.requiredWorkerStatus,
-    supervisorBonus: assignment.supervisorBonus,
-    whatsAppGroupLink: assignment.whatsAppGroupLink,
-
-    financials: {
-      supervisingFees: task.supervisingFees,
-      paymentStatus: task.payment?.status ?? null, 
-    },
-  };
-}
 }

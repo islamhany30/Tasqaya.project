@@ -1,5 +1,5 @@
 import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
-import { JobListResponseDto } from './JoplistResponse.Dto';
+import { JobListResponseDto } from './JobListResponseDto';
 
 export class ApplicationResponseDto {
   id: number;
