@@ -15,6 +15,7 @@ import {
   Render,
   Param,
   Query,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { extname } from 'path';
@@ -30,6 +31,8 @@ import { updateSupervisorDto } from './Dto/UpdateSupervisor.dto';
 import { TaskService } from 'src/AllModules/Task/Task.service';
 import { AdminAuthGuard } from 'src/Auth/Auth.roles';
 import { TaskStatusEnum } from 'src/Enums/task-status.enum';
+import type { Response } from 'express';
+
 
 @Controller('api/supervisor')
 export class SupervisorController {
@@ -161,5 +164,31 @@ export class SupervisorController {
     @Query('status') status?: TaskStatusEnum,
   ) {
     return this.supervisorService.getMyTasks(Number(req.user.sub), status);
+  }
+
+  @Get('tasks/:taskId/attendance-template')
+  @UseGuards(JwtAccountAuthGuard)
+  async getAttendanceTemplate(
+    @Param('taskId', ParseIntPipe) taskId: number,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
+    const { buffer, fileName } = await this.supervisorService.getAttendanceTemplate(
+      Number(req.user.sub),
+      taskId,
+    );
+
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+  } 
+
+  @Get('tasks/:taskId')
+  @UseGuards(JwtAccountAuthGuard)
+  async getTaskDetails(
+    @Param('taskId', ParseIntPipe) taskId: number,
+    @Req() req: any,
+  ) {
+    return this.supervisorService.getTaskDetailsForSupervisor(taskId, Number(req.user.sub));
   }
 }

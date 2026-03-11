@@ -4,8 +4,6 @@ import { WorkerLevel } from './WorkerLevel';
 import { Application } from './Application';
 import { TaskWorker } from './TaskWorker';
 import { Attendance } from './Attendance';
-import { WorkerScoreHistory } from './WorkerScoreHistory';
-import { Admin } from './Admin';
 import { WorkerPayout } from './WorkerPayout';
 import { ConfirmationToken } from './confirmationToken';
 import { GenderEnum } from '../Enums/gender-enum';
@@ -101,11 +99,6 @@ export class Worker {
 
   @OneToMany(() => Attendance, (a) => a.worker, { onDelete: 'CASCADE' })
   attendance: Attendance[];
-
-  @OneToMany(() => WorkerScoreHistory, (h) => h.worker, {
-    onDelete: 'CASCADE',
-  })
-  scoreHistory: WorkerScoreHistory[];
 
 
   @Column({

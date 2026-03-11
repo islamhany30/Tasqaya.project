@@ -300,6 +300,7 @@ const existingToday = await this.attendanceRepo.findOne({
       return this.attendanceRepo.create({
         task:assignment.task,
         worker:worker,
+        attendanceDate: today,  
         checkInTime:checkIn,
         checkOutTime:checkOut,
         status,        
@@ -391,5 +392,120 @@ async getDashboard(supervisorId: number): Promise<any> {
     return { count: tasks.length, tasks };
   }
 
+  async getAttendanceTemplate(supervisorId: number, taskId: number): Promise<{ buffer: Buffer; fileName: string }> {
+  // 1. التأكد إن الـ supervisor assigned على التاسك دي
+  const assignment = await this.taskSupervisorRepo.findOne({
+    where: {
+      task: { id: taskId },
+      supervisor: { id: supervisorId },
+    },
+    relations: ['task'],
+  });
 
+  if (!assignment) {
+    throw new NotFoundException('You are not assigned as a supervisor for this task');
+  }
+
+  // 2. جيب العمال الـ confirmed في التاسك دي
+  const confirmedWorkers = await this.taskWorkerRepo.find({
+    where: {
+      task: { id: taskId },
+      confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+    },
+    relations: ['worker'],
+  });
+
+  if (confirmedWorkers.length === 0) {
+    throw new BadRequestException(
+      'No confirmed workers yet for this task — attendance template is not available until workers confirm their attendance',
+    );
+  }
+
+  // 3. بناء الـ rows
+  const rows = confirmedWorkers.map(tw => ({
+    workerId:   tw.worker.id,
+    workerName: tw.worker.fullName, // للمرجع بس — مش بيتقرأ في الـ upload
+    checkIn:    '',
+    checkOut:   '',
+    status:     '',
+  }));
+
+  // 4. بناء الـ worksheet
+  const worksheet = XLSX.utils.json_to_sheet(rows, {
+    header: ['workerId', 'workerName', 'checkIn', 'checkOut', 'status'],
+  });
+
+  // تعريض الأعمدة
+  worksheet['!cols'] = [
+    { wch: 12 }, // workerId
+    { wch: 25 }, // workerName
+    { wch: 12 }, // checkIn   — format: HH:mm  e.g. 08:00
+    { wch: 12 }, // checkOut  — format: HH:mm  e.g. 16:00
+    { wch: 15 }, // status    — PRESENT or ABSENT
+  ];
+
+  // تثبيت الـ header row
+  worksheet['!freeze'] = { xSplit: 0, ySplit: 1 } as any;
+
+  // تعليقات توضيحية على الـ headers
+  if (!worksheet['A1'].c) worksheet['A1'].c = [];
+  worksheet['A1'].c.push({ a: 'System', t: 'Do not modify workerId' });
+
+  if (!worksheet['B1'].c) worksheet['B1'].c = [];
+  worksheet['B1'].c.push({ a: 'System', t: 'Do not modify workerName' });
+
+  if (!worksheet['C1'].c) worksheet['C1'].c = [];
+  worksheet['C1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 08:00' });
+
+  if (!worksheet['D1'].c) worksheet['D1'].c = [];
+  worksheet['D1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 16:00' });
+
+  if (!worksheet['E1'].c) worksheet['E1'].c = [];
+  worksheet['E1'].c.push({ a: 'System', t: 'Allowed values: PRESENT or ABSENT only' });
+
+  // 5. بناء الـ workbook
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
+  const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  const fileName = `attendance_task_${taskId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+  return { buffer, fileName };
+
+}
+
+async getTaskDetailsForSupervisor(taskId: number, supervisorId: number) {
+  const assignment = await this.taskSupervisorRepo.findOne({
+    where: {
+      task: { id: taskId },
+      supervisor: { id: supervisorId },
+    },
+    relations: ['task', 'task.workerLevel', 'task.workerTypes', 'task.workerTypes.workerTypeId', 'task.payment'],
+  });
+
+  if (!assignment) {
+    throw new NotFoundException('Task not found or you are not assigned to it');
+  }
+
+  const task = assignment.task;
+
+  return {
+    id: task.id,
+    eventName: task.eventName,
+    location: task.location,
+    startDate: task.startDate,
+    endDate: task.endDate,
+    requiredWorkers: task.requiredWorkers,
+    requiredSupervisors: task.requiredSupervisors,
+    workerLevel: task.workerLevel,
+    workerTypes: task.workerTypes,
+    durationHoursPerDay: task.durationHoursPerDay,
+    requiredWorkerStatus: task.requiredWorkerStatus,
+    supervisorBonus: assignment.supervisorBonus,
+    whatsAppGroupLink: assignment.whatsAppGroupLink,
+
+    financials: {
+      supervisingFees: task.supervisingFees,
+      paymentStatus: task.payment?.status ?? null, 
+    },
+  };
+}
 }

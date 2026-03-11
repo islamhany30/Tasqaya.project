@@ -23,6 +23,11 @@ import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { JobPost } from '../../entities/JobPost';
 import { JobPostStatusEnum } from '../../Enums/job-post-status.enum';
 import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
+import { Supervisor } from 'src/entities/Supervisor';
+import { Admin } from 'src/entities/Admin';
+import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
+import { AssignmentTypeEnum } from 'src/Enums/assignment-type.enum';
+import { Application } from 'src/entities/Application';
 
 @Injectable()
 export class TaskService {
@@ -48,6 +53,12 @@ export class TaskService {
     private readonly taskSupervisorRepo: Repository<TaskSupervisor>,
     @InjectRepository(TaskWorker)
     private readonly taskWorkerRepo: Repository<TaskWorker>,
+    @InjectRepository(Supervisor)
+    private readonly supervisorRepo: Repository<Supervisor>,
+    @InjectRepository(Admin)
+    private readonly adminRepo: Repository<Admin>,
+    @InjectRepository(Application)
+    private readonly applicationRepo: Repository<Application>,
 
 
     private readonly paymentService: PaymentService,
@@ -174,6 +185,8 @@ async approveTaskByCompany(taskId: number, companyId: number) {
     await this.paymentService.createInitialInvoice(task, companyId);
 
     await this.createJobPostForTask(task);
+
+    await this.assignSupervisorsToTask(task);
 
     return {
       message: 'Task approved successfully.',
@@ -623,5 +636,200 @@ private async createJobPostForTask(task: Task) {
   return await this.jobPostRepo.save(jobPost);
 }
 
+private async assignSupervisorsToTask(task: Task): Promise<void> {
+  const config = await this.systemconfig.findOne({ where: { id: 1 } });
+  const supervisorBonus = config?.globalSupervisorBouns ?? 400;
 
+  const availableSupervisors = await this.supervisorRepo
+    .createQueryBuilder('s')
+    .where('s.isActive = true')
+    .andWhere(qb => {
+      const subQuery = qb.subQuery()
+        .select('ts.supervisorId')
+        .from(TaskSupervisor, 'ts')
+        .innerJoin('ts.task', 't')
+        .where('t.startDate <= :newEnd', { newEnd: task.endDate })
+        .andWhere('t.endDate >= :newStart', { newStart: task.startDate })
+        .getQuery();
+      return `s.id NOT IN ${subQuery}`;
+    })
+    .take(task.requiredSupervisors)
+    .getMany();
+
+if (availableSupervisors.length === 0) {
+  const admin = await this.adminRepo.findOne({ where: { isActive: true } });
+  if (admin) {
+    await this.mailService.sendMail({
+      to: admin.email,
+      subject: `⚠️ No Supervisors Available: ${task.eventName}`,
+      html: `
+        <div style="direction: ltr; font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e74c3c; border-radius: 10px;">
+          <h2 style="color: #e74c3c;">⚠️ Action Required: No Supervisors Available</h2>
+          <p>The following task has been approved but <b>no supervisors are available</b> for assignment:</p>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Event Name</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.eventName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Location</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.location}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Start Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.startDate).toDateString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">End Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.endDate).toDateString()}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Required Supervisors</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.requiredSupervisors}</td>
+            </tr>
+          </table>
+          <p style="margin-top: 20px; color: #e74c3c; font-weight: bold;">Please assign supervisors manually as soon as possible.</p>
+        </div>
+      `,
+    });
+  }
+  return;
+}
+  const assignments = availableSupervisors.map(supervisor => {
+    const assignment         = new TaskSupervisor();
+    assignment.task          = task;
+    assignment.supervisor    = supervisor;
+    assignment.supervisorBonus = supervisorBonus;
+    return assignment;
+  });
+
+  await this.taskSupervisorRepo.save(assignments);
+
+  const emailPromises = availableSupervisors.map(supervisor =>
+    this.mailService.sendMail({
+      to: supervisor.email,
+      subject: `New Task Assignment: ${task.eventName}`,
+      html: `
+        <div style="direction: ltr; font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #1a73e8;">You have been assigned to a new task! 🎯</h2>
+          <p>Hello <b>${supervisor.fullName}</b>,</p>
+          <p>You have been assigned as a supervisor for the following task:</p>
+
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Event Name</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.eventName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Location</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.location}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Start Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.startDate).toDateString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">End Date</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${new Date(task.endDate).toDateString()}</td>
+            </tr>
+            <tr style="background-color: #f8f9fa;">
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Hours Per Day</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${task.durationHoursPerDay} hours</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold;">Your Bonus</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${supervisorBonus} EGP</td>
+            </tr>
+          </table>
+
+          <p style="margin-top: 20px; color: #5f6368; font-size: 14px;">
+            Please log in to your account for more details.
+          </p>
+          <p style="margin-top: 10px; font-size: 12px; color: #7f8c8d;">Thank you for your cooperation.</p>
+        </div>
+      `,
+    }),
+  );
+
+  await Promise.all(emailPromises);
+}
+
+async filterJobPostWorkers(jobPostId: number): Promise<void> {
+    const jobPost = await this.jobPostRepo.findOne({
+      where: { id: jobPostId },
+      relations: ['task'],
+    });
+
+    if (!jobPost) throw new NotFoundException('Job post not found');
+
+    if (jobPost.status === JobPostStatusEnum.CLOSED) return;
+
+    const task = jobPost.task;
+    const requiredWorkers = task.requiredWorkers;
+    const BACKUP_COUNT = 3;
+    const totalToSelect = requiredWorkers + 3;
+
+    //Filter by reliabilty rate first
+    const rankedApplications = await this.applicationRepo
+      .createQueryBuilder('app')
+      .innerJoinAndSelect('app.worker', 'worker')
+      .where('app.jobPostId = :jobPostId', { jobPostId })
+      .andWhere('app.status = :status', { status: ApplicationStatusEnum.PENDING })
+      .orderBy('worker.reliabilityRate', 'DESC')
+      .addOrderBy('app.appliedAt', 'ASC')
+      .addOrderBy('worker.score', 'DESC')
+      .addOrderBy('worker.completedTasks', 'DESC')
+      .getMany();
+
+    const selected = rankedApplications.slice(0, totalToSelect); // array of selected applications (including backups)
+    const rejected = rankedApplications.slice(totalToSelect);
+
+    //create TaskWorker records
+    const taskWorkerRecords: TaskWorker[] = selected.map((app, index) => {
+      const isPrimary = index < requiredWorkers; // index here is based on the ranked list, not the original applications array
+
+      const record = this.taskWorkerRepo.create({
+        task: task,
+        worker: app.worker,
+        assignmentType: isPrimary ? AssignmentTypeEnum.PRIMARY : AssignmentTypeEnum.BACKUP,
+        backupOrder: isPrimary ? undefined : index - requiredWorkers + 1,
+        confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
+      });
+
+      return record;
+    });
+    await this.taskWorkerRepo.save(taskWorkerRecords);
+
+    //Update Application statuses
+    const primaryIds = selected.slice(0, requiredWorkers).map((a) => a.id);
+    const backupIds = selected.slice(requiredWorkers).map((a) => a.id);
+    const rejectedIds = rejected.map((a) => a.id);
+
+    if (primaryIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.ACCEPTED })
+        .whereInIds(primaryIds)
+        .execute();
+
+    if (backupIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.BACKUP })
+        .whereInIds(backupIds)
+        .execute();
+
+    if (rejectedIds.length > 0)
+      await this.applicationRepo
+        .createQueryBuilder()
+        .update()
+        .set({ status: ApplicationStatusEnum.REJECTED })
+        .whereInIds(rejectedIds)
+        .execute();
+
+    //Close the job post
+    await this.jobPostRepo.update(jobPostId, { status: JobPostStatusEnum.CLOSED });
+  }
 }

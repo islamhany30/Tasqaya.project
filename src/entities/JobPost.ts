@@ -19,6 +19,9 @@ export class JobPost {
   @Column()
   maxAllowedWorkers: number;
 
+   @Column({ type: 'datetime' })
+   deadline: Date;
+
   @Column({ 
     type: 'enum', 
     enum: JobPostStatusEnum, 
