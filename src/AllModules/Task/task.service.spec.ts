@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { Test, TestingModule } from '@nestjs/testing';
 import { TaskService } from './Task.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -11,6 +12,9 @@ import { WorkerType } from '../../entities/WorkerType';
 import { TaskWorkerType } from '../../entities/TaskWorkerType';
 import { Payment } from '../../entities/Payment';
 import { JobPost } from '../../entities/JobPost';
+import { Supervisor } from '../../entities/Supervisor';
+import { Admin } from '../../entities/Admin';
+import { Worker } from '../../entities/Worker';
 import { MailService } from '../../Mail/MailService';
 import { PaymentService } from '../Payment/Payment.service';
 import { BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
@@ -29,7 +33,7 @@ describe('TaskService - Full Coverage', () => {
   let module: TestingModule;
   let taskRepo: any;
   let levelRepo: any;
-  let supervisorRepo: any;
+  let taskSupervisorRepo: any;
   let taskWorkerRepo: any;
   let workerTypeRepo: any;
   let taskWorkerTypeRepo: any;
@@ -37,6 +41,9 @@ describe('TaskService - Full Coverage', () => {
   let feedbackRepo: any;
   let paymentRepo: any;
   let jobPostRepo: any;
+  let supervisorRepo: any;
+  let adminRepo: any;
+  let workerRepo: any;
   let paymentService: PaymentService;
   let mailService: MailService;
   let applicationRepo: any;
@@ -65,6 +72,9 @@ describe('TaskService - Full Coverage', () => {
         { provide: getRepositoryToken(TaskWorkerType), useValue: mockRepoFactory() },
         { provide: getRepositoryToken(Payment), useValue: mockRepoFactory() },
         { provide: getRepositoryToken(JobPost), useValue: mockRepoFactory() },
+        { provide: getRepositoryToken(Supervisor), useValue: mockRepoFactory() },
+        { provide: getRepositoryToken(Admin), useValue: mockRepoFactory() },
+        { provide: getRepositoryToken(Worker), useValue: mockRepoFactory() },
         {
           provide: PaymentService,
           useValue: { createInitialInvoice: jest.fn().mockResolvedValue({ id: 999 }) },
@@ -80,7 +90,7 @@ describe('TaskService - Full Coverage', () => {
     service = module.get<TaskService>(TaskService);
     taskRepo = module.get(getRepositoryToken(Task));
     levelRepo = module.get(getRepositoryToken(WorkerLevel));
-    supervisorRepo = module.get(getRepositoryToken(TaskSupervisor));
+    taskSupervisorRepo = module.get(getRepositoryToken(TaskSupervisor));
     taskWorkerRepo = module.get(getRepositoryToken(TaskWorker));
     workerTypeRepo = module.get(getRepositoryToken(WorkerType));
     taskWorkerTypeRepo = module.get(getRepositoryToken(TaskWorkerType));
@@ -88,6 +98,9 @@ describe('TaskService - Full Coverage', () => {
     feedbackRepo = module.get(getRepositoryToken(CompanyFeedback));
     paymentRepo = module.get(getRepositoryToken(Payment));
     jobPostRepo = module.get(getRepositoryToken(JobPost));
+    supervisorRepo = module.get(getRepositoryToken(Supervisor));
+    adminRepo = module.get(getRepositoryToken(Admin));
+    workerRepo = module.get(getRepositoryToken(Worker));
     paymentService = module.get<PaymentService>(PaymentService);
     mailService = module.get<MailService>(MailService);
     applicationRepo = module.get(getRepositoryToken(Application));
@@ -116,8 +129,22 @@ describe('TaskService - Full Coverage', () => {
     getRawOne: jest.fn().mockResolvedValue(rawOne),
   });
 
+  const buildSelectQueryBuilderMock = (getManyResult: any[] = [], getOneResult: any = null) => ({
+    where: jest.fn().mockReturnThis(),
+    andWhere: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getMany: jest.fn().mockResolvedValue(getManyResult),
+    getOne: jest.fn().mockResolvedValue(getOneResult),
+    innerJoin: jest.fn().mockReturnThis(),
+    innerJoinAndSelect: jest.fn().mockReturnThis(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
+    orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
+  });
+
   const buildFiltrationQbMock = (getManyResult: any[] = []) => ({
     innerJoinAndSelect: jest.fn().mockReturnThis(),
+    leftJoinAndSelect: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
@@ -246,9 +273,6 @@ describe('TaskService - Full Coverage', () => {
           status: TaskStatusEnum.PENDING,
         }),
       );
-      // createJobPostForTask بيتنادى fire-and-forget (بدون await)
-      // نتأكد إن الـ jobPostRepo.create اتنادى
-      expect(jobPostRepo.create).toHaveBeenCalledWith(expect.objectContaining({ status: expect.any(String) }));
     });
 
     it('should throw NotFoundException if task not found', async () => {
@@ -580,7 +604,7 @@ describe('TaskService - Full Coverage', () => {
   // =========================================================================
   describe('saveWhatsAppLinkAndNotify', () => {
     it('should save link, send emails to workers with emails only, and return success', async () => {
-      supervisorRepo.findOne.mockResolvedValue({
+      taskSupervisorRepo.findOne.mockResolvedValue({
         id: 1,
         task: { eventName: 'Big Event' },
         whatsAppGroupLink: null,
@@ -592,13 +616,13 @@ describe('TaskService - Full Coverage', () => {
 
       const result = await service.saveWhatsAppLinkAndNotify(1, 'https://wa.me/group/abc');
 
-      expect(supervisorRepo.save).toHaveBeenCalled();
+      expect(taskSupervisorRepo.save).toHaveBeenCalled();
       expect(mailService.sendMail).toHaveBeenCalledTimes(1);
       expect(result.success).toBe(true);
     });
 
     it('should throw NotFoundException if supervisor assignment not found', async () => {
-      supervisorRepo.findOne.mockResolvedValue(null);
+      taskSupervisorRepo.findOne.mockResolvedValue(null);
       await expect(service.saveWhatsAppLinkAndNotify(1, 'link')).rejects.toThrow(NotFoundException);
     });
   });
@@ -946,6 +970,207 @@ describe('TaskService - Full Coverage', () => {
           expect(record.confirmationStatus).toBe(WorkerConfirmationStatusEnum.PENDING);
         });
       });
+    });
+  });
+
+  describe('task workflow coverage', () => {
+    it('should publish job post and assign supervisors when supervisors are available', async () => {
+      const task = {
+        id: 99,
+        eventName: 'Workflow Event',
+        location: 'Cairo',
+        startDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        requiredWorkers: 2,
+        durationHoursPerDay: 8,
+        workerLevel: { id: 1, levelName: 'Junior' },
+      };
+      taskRepo.findOne.mockResolvedValue(task);
+      jobPostRepo.create.mockReturnValue({ task, maxAllowedWorkers: 2, status: 'OPEN' });
+      jobPostRepo.save.mockResolvedValue({ id: 10, task, status: 'OPEN' });
+
+      const supervisorQb = buildSelectQueryBuilderMock([
+        { id: 1, email: 'sup1@test.com', fullName: 'Sup One' },
+        { id: 2, email: 'sup2@test.com', fullName: 'Sup Two' },
+      ]);
+      supervisorRepo.createQueryBuilder.mockReturnValue(supervisorQb);
+      taskSupervisorRepo.save.mockResolvedValue([]);
+
+      await service.publishJobPostAndAssignSupervisors(task as any);
+
+      expect(jobPostRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ task, maxAllowedWorkers: 2, status: 'Open' }),
+      );
+      expect(taskSupervisorRepo.save).toHaveBeenCalledWith(expect.any(Array));
+      expect(mailService.sendMail).toHaveBeenCalledTimes(2);
+    });
+
+    it('should notify admin when no supervisors are available', async () => {
+      const task = {
+        id: 100,
+        eventName: 'No Supervisor Event',
+        location: 'Cairo',
+        startDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000),
+        requiredWorkers: 1,
+        durationHoursPerDay: 6,
+        workerLevel: { id: 1, levelName: 'Senior' },
+      };
+      taskRepo.findOne.mockResolvedValue(task);
+      jobPostRepo.create.mockReturnValue({ task, maxAllowedWorkers: 1, status: 'OPEN' });
+      jobPostRepo.save.mockResolvedValue({ id: 11, task, status: 'OPEN' });
+
+      const supervisorQb = buildSelectQueryBuilderMock([]);
+      supervisorRepo.createQueryBuilder.mockReturnValue(supervisorQb);
+      adminRepo.findOne.mockResolvedValue({ email: 'admin@test.com' });
+
+      await service.publishJobPostAndAssignSupervisors(task as any);
+
+      expect(taskSupervisorRepo.save).not.toHaveBeenCalled();
+      expect(mailService.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: 'admin@test.com' }));
+    });
+
+    it('should return admin task metrics and recent tasks', async () => {
+      const taskStatsQb = buildQbMock([
+        { status: TaskStatusEnum.COMPLETED, count: '2' },
+        { status: TaskStatusEnum.PENDING, count: '1' },
+      ]);
+      const companyStatsQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        setParameter: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ totalCompanies: '3', activeCompanies: '1' }),
+      };
+      const workerStatsQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ total: '12', activeCount: '9', avgReliability: '88.2' }),
+      };
+      const ratingQb = {
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        getRawOne: jest.fn().mockResolvedValue({ avg: '4.7', total: '20' }),
+      };
+      taskRepo.createQueryBuilder = jest.fn().mockReturnValueOnce(taskStatsQb).mockReturnValueOnce(companyStatsQb);
+      paymentRepo.createQueryBuilder = jest.fn().mockReturnValue(
+        buildQbMock([
+          { status: PaymentStatusEnum.PAID, total: '1500' },
+          { status: PaymentStatusEnum.PENDING, total: '500' },
+        ]),
+      );
+      workerRepo.createQueryBuilder = jest.fn().mockReturnValue(workerStatsQb);
+      feedbackRepo.createQueryBuilder = jest.fn().mockReturnValue(ratingQb);
+      taskRepo.find.mockResolvedValue([
+        {
+          id: 1,
+          eventName: 'Upcoming Event',
+          startDate: new Date(Date.now() + 100000),
+          requiredWorkers: 4,
+          taskWorkers: [{}, {}, {}],
+        },
+      ]);
+
+      const result = await service.getAdminDashboardStats();
+
+      expect(result.data.tasks.completed).toBe(2);
+      expect(result.data.payments.totalRevenue).toBe(1500);
+      expect(result.data.workers.total).toBe(12);
+      expect(result.data.platform.averageRating).toBe(4.7);
+      expect(result.data.recentTasks).toHaveLength(1);
+    });
+
+    it('should fetch admin task details and applicant data correctly', async () => {
+      taskRepo.findOne.mockResolvedValue({
+        id: 12,
+        eventName: 'Admin Event',
+        location: 'Giza',
+        startDate: new Date(),
+        endDate: new Date(),
+        durationHoursPerDay: 5,
+        requiredWorkers: 3,
+        requiredSupervisors: 1,
+        status: TaskStatusEnum.PENDING,
+        approvalStatus: TaskApprovalStatusEnum.PENDING,
+        requiredWorkerStatus: requiredWorkersStatusEnum.COMPLETED,
+        hasUniform: false,
+        uniformDescription: null,
+        genders: ['Male'],
+        createdAt: new Date(),
+        company: { id: 1, name: 'Co', email: 'co@test.com' },
+        workerLevel: { id: 2, levelName: 'Junior' },
+        workerTypes: [{ workerTypeId: { id: 5, typeName: 'Security' } }],
+        payment: { status: PaymentStatusEnum.PENDING },
+        jobPost: {
+          id: 22,
+          status: JobPostStatusEnum.OPEN,
+          deadline: new Date(),
+          publishedAt: new Date(),
+          maxAllowedWorkers: 3,
+        },
+        supervisors: [
+          {
+            id: 1,
+            supervisor: { id: 10, fullName: 'Sup', email: 'sup@test.com', phone: '0123' },
+            supervisorBonus: 400,
+            whatsAppGroupLink: null,
+          },
+        ],
+        taskWorkers: [
+          {
+            worker: { id: 21, fullName: 'Worker One' },
+            assignmentType: AssignmentTypeEnum.PRIMARY,
+            backupOrder: undefined,
+            confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+          },
+        ],
+      });
+
+      const details = await service.getTaskDetailsForAdmin(12);
+
+      expect(details.data.id).toBe(12);
+      expect(details.data.company.name).toBe('Co');
+      expect(details.data.workerTypes[0].typeName).toBe('Security');
+    });
+
+    it('should throw when admin task details request is for a missing task', async () => {
+      taskRepo.findOne.mockResolvedValue(null);
+      await expect(service.getTaskDetailsForAdmin(999)).rejects.toThrow(NotFoundException);
+    });
+
+    it('should fetch job post applicants for admin', async () => {
+      jobPostRepo.findOne.mockResolvedValue({
+        id: 55,
+        status: JobPostStatusEnum.OPEN,
+        task: { id: 120, eventName: 'Applicant Event' },
+      });
+      const applicantQb = buildFiltrationQbMock([
+        {
+          id: 1,
+          status: 'PENDING',
+          appliedAt: new Date('2026-04-01T10:00:00Z'),
+          worker: {
+            id: 88,
+            fullName: 'Worker A',
+            email: 'a@test.com',
+            phone: '010',
+            reliabilityRate: 95,
+            score: 80,
+            completedTasks: 5,
+            level: { levelName: 'Senior' },
+          },
+        },
+      ]);
+      applicationRepo.createQueryBuilder = jest.fn().mockReturnValue(applicantQb);
+
+      const result = await service.getJobPostApplicants(55);
+
+      expect(result.data.jobPostId).toBe(55);
+      expect(result.data.applicants[0].worker.fullName).toBe('Worker A');
+    });
+
+    it('should throw when job post is not found for applicants', async () => {
+      jobPostRepo.findOne.mockResolvedValue(null);
+      await expect(service.getJobPostApplicants(999)).rejects.toThrow(NotFoundException);
     });
   });
 });
