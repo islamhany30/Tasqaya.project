@@ -501,7 +501,6 @@ export class SupervisorService implements IAuthUser {
 
       financials: {
         supervisingFees: task.supervisingFees,
-        paymentStatus: task.payment?.status ?? null,
       },
     };
   }

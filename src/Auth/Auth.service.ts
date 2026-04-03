@@ -98,6 +98,7 @@ export class AuthService {
           verificationCodeExpiry: expiry,
           isActive: true,
           isVerified: false,
+          hashedPassword:hashedPassword,
           account: savedAccount,
         },
         manager,
