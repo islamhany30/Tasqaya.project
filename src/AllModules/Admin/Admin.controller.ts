@@ -175,4 +175,10 @@ export class AdminController {
   async getJobPostApplicants(@Param('id', ParseIntPipe) jobPostId: number) {
     return this.adminService.getJobPostApplicantsForAdmin(jobPostId);
   }
+
+  @UseGuards(AdminAuthGuard)
+  @Get('dashboard/stats')
+  async getDashboardStats() {
+    return this.adminService.getAdminDashboardStats();
+  }
 }

@@ -74,7 +74,7 @@ export class TaskService {
 
     @Inject(forwardRef(() => PaymentService))
     private readonly paymentService: PaymentService,
-        private readonly mailService: MailService,
+    private readonly mailService: MailService,
   ) {}
 
   async createTaskByCompany(dto: CreateTaskDto, companyId: number) {
@@ -172,47 +172,44 @@ export class TaskService {
   }
 
   async approveTaskByCompany(taskId: number, companyId: number) {
-  const task = await this.taskRepo.findOne({
-    where: { id: taskId, company: { id: companyId } },
-  });
- 
-  if (!task) throw new NotFoundException('Task not found');
- 
-  const today     = new Date();
-  const startDate = new Date(task.startDate);
-  const diffInDays = (startDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
- 
-  if (diffInDays < 7) {
-    throw new BadRequestException(
-      'Cannot approve task; approval must be at least 7 days before the start date',
-    );
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId, company: { id: companyId } },
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+
+    const today = new Date();
+    const startDate = new Date(task.startDate);
+    const diffInDays = (startDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+
+    if (diffInDays < 7) {
+      throw new BadRequestException('Cannot approve task; approval must be at least 7 days before the start date');
+    }
+
+    task.approvalStatus = TaskApprovalStatusEnum.APPROVED;
+    task.status = TaskStatusEnum.PENDING;
+    await this.taskRepo.save(task);
+
+    // ── Create invoice with 50/50 split ──────────────────────
+    const invoice = await this.paymentService.createInitialInvoice(task, companyId);
+
+    // ── DO NOT publish job post yet ──────────────────────────
+    // Job post will go live only after company pays the deposit (50%)
+    // This happens in publishJobPostAndAssignSupervisors()
+
+    return {
+      message: 'Task approved successfully. Please pay the deposit to publish the job post.',
+      taskId: task.id,
+      totalCost: task.totalCost,
+      paymentPlan: {
+        depositAmount: invoice.depositAmount,
+        remainingAmount: invoice.remainingAmount,
+        depositNote: 'Pay 50% now to publish the job post and start hiring workers',
+        remainingNote: 'Pay the remaining 50% after the task is completed',
+      },
+      invoiceId: invoice.id,
+    };
   }
- 
-  task.approvalStatus = TaskApprovalStatusEnum.APPROVED;
-  task.status         = TaskStatusEnum.PENDING;
-  await this.taskRepo.save(task);
- 
-  // ── Create invoice with 50/50 split ──────────────────────
-  const invoice = await this.paymentService.createInitialInvoice(task, companyId);
- 
-  // ── DO NOT publish job post yet ──────────────────────────
-  // Job post will go live only after company pays the deposit (50%)
-  // This happens in publishJobPostAndAssignSupervisors()
- 
-  return {
-    message:     'Task approved successfully. Please pay the deposit to publish the job post.',
-    taskId:      task.id,
-    totalCost:   task.totalCost,
-    paymentPlan: {
-      depositAmount:   invoice.depositAmount,
-      remainingAmount: invoice.remainingAmount,
-      depositNote:     'Pay 50% now to publish the job post and start hiring workers',
-      remainingNote:   'Pay the remaining 50% after the task is completed',
-    },
-    invoiceId: invoice.id,
-  };
-}
- 
 
   async getCompanyApprovedTasks(companyId: number) {
     return await this.taskRepo.find({
@@ -1056,17 +1053,141 @@ export class TaskService {
   }
 
   async publishJobPostAndAssignSupervisors(task: Task) {
-  // reload task to get fresh data
-  const freshTask = await this.taskRepo.findOne({
-    where: { id: task.id },
-    relations: ['workerLevel'],
-  });
-  if (!freshTask) throw new NotFoundException('Task not found');
- 
-  // publish job post
-  await this.createJobPostForTask(freshTask);
- 
-  // assign supervisors
-  await this.assignSupervisorsToTask(freshTask);
-}
+    // reload task to get fresh data
+    const freshTask = await this.taskRepo.findOne({
+      where: { id: task.id },
+      relations: ['workerLevel'],
+    });
+    if (!freshTask) throw new NotFoundException('Task not found');
+
+    // publish job post
+    await this.createJobPostForTask(freshTask);
+
+    // assign supervisors
+    await this.assignSupervisorsToTask(freshTask);
+  }
+
+  //Admin Dashboard statistics
+  async getAdminDashboardStats(): Promise<any> {
+    // ── Task stats grouped by status ─────────────────────────────────────────
+    const taskStats = await this.taskRepo
+      .createQueryBuilder('task')
+      .select('task.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('task.status')
+      .getRawMany();
+
+    const taskCounts = {
+      [TaskStatusEnum.PENDING]: 0,
+      [TaskStatusEnum.IN_PROGRESS]: 0,
+      [TaskStatusEnum.COMPLETED]: 0,
+      [TaskStatusEnum.UNAPPROVED]: 0,
+    };
+    taskStats.forEach((s) => {
+      taskCounts[s.status] = parseInt(s.count);
+    });
+
+    // ── Payment stats ─────────────────────────────────────────────────────────
+    const paymentStats = await this.paymentRepo
+      .createQueryBuilder('payment')
+      .select('payment.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('SUM(payment.totalAmount)', 'total')
+      .groupBy('payment.status')
+      .getRawMany();
+
+    const totalRevenue = paymentStats.find((p) => p.status === PaymentStatusEnum.PAID)?.total || 0;
+    const pendingRevenue = paymentStats.find((p) => p.status === PaymentStatusEnum.PENDING)?.total || 0;
+    const paidInvoicesCount = parseInt(paymentStats.find((p) => p.status === PaymentStatusEnum.PAID)?.count || '0');
+    const pendingInvoicesCount = parseInt(
+      paymentStats.find((p) => p.status === PaymentStatusEnum.PENDING)?.count || '0',
+    );
+
+    // ── Worker stats ──────────────────────────────────────────────────────────
+    const workerStats = await this.workerRepo
+      .createQueryBuilder('worker')
+      .select('COUNT(*)', 'total')
+      .addSelect('SUM(CASE WHEN worker.isActive = 1 THEN 1 ELSE 0 END)', 'activeCount')
+      .addSelect('AVG(worker.reliabilityRate)', 'avgReliability')
+      .getRawOne();
+
+    // ── Company stats ─────────────────────────────────────────────────────────
+    const companyStats = await this.taskRepo
+      .createQueryBuilder('task')
+      .select('COUNT(DISTINCT task.companyId)', 'totalCompanies')
+      .addSelect('COUNT(DISTINCT CASE WHEN task.status = :inProgress THEN task.companyId END)', 'activeCompanies')
+      .setParameter('inProgress', TaskStatusEnum.IN_PROGRESS)
+      .getRawOne();
+
+    // ── Average platform rating ───────────────────────────────────────────────
+    const ratingResult = await this.feedbackRepo
+      .createQueryBuilder('f')
+      .select('AVG(f.rating)', 'avg')
+      .addSelect('COUNT(*)', 'total')
+      .getRawOne();
+
+    // ── Most recent 5 tasks ───────────────────────────────────────────────────
+    const recentTasks = await this.taskRepo.find({
+      relations: ['company'],
+      order: { createdAt: 'DESC' },
+      take: 5,
+      select: {
+        id: true,
+        eventName: true,
+        status: true,
+        approvalStatus: true,
+        createdAt: true,
+        totalCost: true,
+        company: {
+          id: true,
+          name: true,
+        },
+      },
+    });
+
+    return {
+      message: 'Admin dashboard stats fetched successfully',
+      data: {
+        tasks: {
+          total:
+            taskCounts[TaskStatusEnum.PENDING] +
+            taskCounts[TaskStatusEnum.IN_PROGRESS] +
+            taskCounts[TaskStatusEnum.COMPLETED] +
+            taskCounts[TaskStatusEnum.UNAPPROVED],
+          unapproved: taskCounts[TaskStatusEnum.UNAPPROVED],
+          pending: taskCounts[TaskStatusEnum.PENDING],
+          inProgress: taskCounts[TaskStatusEnum.IN_PROGRESS],
+          completed: taskCounts[TaskStatusEnum.COMPLETED],
+        },
+        payments: {
+          totalRevenue: Number(parseFloat(totalRevenue).toFixed(2)),
+          pendingRevenue: Number(parseFloat(pendingRevenue).toFixed(2)),
+          paidInvoices: paidInvoicesCount,
+          pendingInvoices: pendingInvoicesCount,
+        },
+        workers: {
+          total: parseInt(workerStats.total || '0'),
+          active: parseInt(workerStats.activeCount || '0'),
+          avgReliabilityRate: Number(parseFloat(workerStats.avgReliability || '0').toFixed(1)),
+        },
+        companies: {
+          total: parseInt(companyStats.totalCompanies || '0'),
+          currentlyActive: parseInt(companyStats.activeCompanies || '0'),
+        },
+        platform: {
+          averageRating: Number(parseFloat(ratingResult?.avg || '0').toFixed(1)),
+          totalFeedbacks: parseInt(ratingResult?.total || '0'),
+        },
+        recentTasks: recentTasks.map((t) => ({
+          id: t.id,
+          eventName: t.eventName,
+          status: t.status,
+          approvalStatus: t.approvalStatus,
+          totalCost: t.totalCost,
+          createdAt: t.createdAt,
+          company: t.company?.name || null,
+        })),
+      },
+    };
+  }
 }

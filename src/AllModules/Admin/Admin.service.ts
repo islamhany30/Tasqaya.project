@@ -234,4 +234,8 @@ export class AdminService implements IAuthUser {
   async getJobPostApplicantsForAdmin(id: number) {
     return this.taskService.getJobPostApplicants(id);
   }
+
+  async getAdminDashboardStats(): Promise<any> {
+    return this.taskService.getAdminDashboardStats();
+  }
 }
