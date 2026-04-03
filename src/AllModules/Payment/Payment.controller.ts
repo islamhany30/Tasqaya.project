@@ -1,5 +1,7 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { PaymentService } from './Payment.service';
+import { PayInvoiceDto } from './Dto/PayInvoiceDto';
+import { JwtAccountAuthGuard } from 'src/Auth/auth.guards.account';
 
 @Controller('payment')
 export class PaymentController {
@@ -24,5 +26,15 @@ export class PaymentController {
         reason: query['data.message'],
       };
     }
+  }
+
+  @Post('payments/:paymentId/pay')
+  @UseGuards(JwtAccountAuthGuard)
+  async payInvoice(
+    @Param('paymentId', ParseIntPipe) paymentId: number,
+    @Body() dto: PayInvoiceDto,
+    @Req() req: any,
+  ) {
+    return this.paymentService.initiatePayment(paymentId, req.user.sub, dto.method, dto.step);
   }
 }

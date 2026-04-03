@@ -120,7 +120,7 @@ export class Task {
   supervisors: TaskSupervisor[];
 
   @OneToOne(() => Payment, (payment) => payment.task)
-  payment: Payment; 
+  payment: Payment;
 
   @OneToOne(() => CompanyFeedback, f => f.task, { cascade: true })
   feedback: CompanyFeedback[];

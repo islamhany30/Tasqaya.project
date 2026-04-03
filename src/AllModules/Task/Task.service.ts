@@ -5,6 +5,7 @@ import {
   ForbiddenException,
   InternalServerErrorException,
   Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, MoreThan, Repository } from 'typeorm';
@@ -71,8 +72,9 @@ export class TaskService {
     @InjectRepository(Worker)
     private readonly workerRepo: Repository<Worker>,
 
+    @Inject(forwardRef(() => PaymentService))
     private readonly paymentService: PaymentService,
-    private readonly mailService: MailService,
+        private readonly mailService: MailService,
   ) {}
 
   async createTaskByCompany(dto: CreateTaskDto, companyId: number) {
@@ -170,39 +172,47 @@ export class TaskService {
   }
 
   async approveTaskByCompany(taskId: number, companyId: number) {
-    const task = await this.taskRepo.findOne({
-      where: { id: taskId, company: { id: companyId } },
-    });
-
-    if (!task) throw new NotFoundException('Task not found');
-
-    const today = new Date();
-    const startDate = new Date(task.startDate);
-
-    const diffInTime = startDate.getTime() - today.getTime();
-    const diffInDays = diffInTime / (1000 * 3600 * 24);
-
-    if (diffInDays < 7) {
-      throw new BadRequestException('Cannot approve task; approval must be at least 7 days before the start date');
-    }
-
-    task.approvalStatus = TaskApprovalStatusEnum.APPROVED;
-    task.status = TaskStatusEnum.PENDING;
-
-    await this.taskRepo.save(task);
-
-    await this.paymentService.createInitialInvoice(task, companyId);
-
-    await this.createJobPostForTask(task);
-
-    await this.assignSupervisorsToTask(task);
-
-    return {
-      message: 'Task approved successfully.',
-      taskId: task.id,
-      estimatedTotal: task.totalCost,
-    };
+  const task = await this.taskRepo.findOne({
+    where: { id: taskId, company: { id: companyId } },
+  });
+ 
+  if (!task) throw new NotFoundException('Task not found');
+ 
+  const today     = new Date();
+  const startDate = new Date(task.startDate);
+  const diffInDays = (startDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+ 
+  if (diffInDays < 7) {
+    throw new BadRequestException(
+      'Cannot approve task; approval must be at least 7 days before the start date',
+    );
   }
+ 
+  task.approvalStatus = TaskApprovalStatusEnum.APPROVED;
+  task.status         = TaskStatusEnum.PENDING;
+  await this.taskRepo.save(task);
+ 
+  // ── Create invoice with 50/50 split ──────────────────────
+  const invoice = await this.paymentService.createInitialInvoice(task, companyId);
+ 
+  // ── DO NOT publish job post yet ──────────────────────────
+  // Job post will go live only after company pays the deposit (50%)
+  // This happens in publishJobPostAndAssignSupervisors()
+ 
+  return {
+    message:     'Task approved successfully. Please pay the deposit to publish the job post.',
+    taskId:      task.id,
+    totalCost:   task.totalCost,
+    paymentPlan: {
+      depositAmount:   invoice.depositAmount,
+      remainingAmount: invoice.remainingAmount,
+      depositNote:     'Pay 50% now to publish the job post and start hiring workers',
+      remainingNote:   'Pay the remaining 50% after the task is completed',
+    },
+    invoiceId: invoice.id,
+  };
+}
+ 
 
   async getCompanyApprovedTasks(companyId: number) {
     return await this.taskRepo.find({
@@ -1044,4 +1054,19 @@ export class TaskService {
 
     await Promise.all(emailPromises);
   }
+
+  async publishJobPostAndAssignSupervisors(task: Task) {
+  // reload task to get fresh data
+  const freshTask = await this.taskRepo.findOne({
+    where: { id: task.id },
+    relations: ['workerLevel'],
+  });
+  if (!freshTask) throw new NotFoundException('Task not found');
+ 
+  // publish job post
+  await this.createJobPostForTask(freshTask);
+ 
+  // assign supervisors
+  await this.assignSupervisorsToTask(freshTask);
+}
 }

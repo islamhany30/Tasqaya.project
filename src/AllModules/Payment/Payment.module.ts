@@ -7,12 +7,14 @@ import { Task } from 'src/entities/Task';
 import { SystemConfig } from 'src/entities/SystemConfig';
 import { HttpModule } from '@nestjs/axios';
 import { PaymentController } from './Payment.controller';
+import { TaskModule } from '../Task/Task.module';
 
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payment,Task,SystemConfig]),
-    HttpModule
+    HttpModule,
+    forwardRef(() => TaskModule),
     ],
   controllers: [PaymentWebhookController,PaymentController],
   providers: [PaymentService],
