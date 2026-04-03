@@ -8,10 +8,7 @@ export class PaymentWebhookController {
 
   @Post('paymob')
   @HttpCode(HttpStatus.OK)
-  async handlePaymobWebhook(
-    @Query('hmac') hmac: string,
-    @Body() body: any,
-  ) {
+  async handlePaymobWebhook(@Query('hmac') hmac: string, @Body() body: any) {
     if (!hmac || !body.obj) {
       throw new BadRequestException('Missing HMAC signature or payload');
     }

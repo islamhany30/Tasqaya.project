@@ -8,11 +8,11 @@ export class Payment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @OneToOne(() => Task, t => t.payment, { onDelete: 'CASCADE' })
+  @OneToOne(() => Task, (t) => t.payment, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'taskId' })
   task: Task;
 
-  @ManyToOne(() => Company, c => c.payments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Company, (c) => c.payments, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'companyId' })
   company: Company;
 
@@ -41,9 +41,9 @@ export class Payment {
   createdAt: Date;
 
   @Column({
-  type: 'enum',
-  enum: PaymentStatusEnum,
-  default: PaymentStatusEnum.PENDING,
+    type: 'enum',
+    enum: PaymentStatusEnum,
+    default: PaymentStatusEnum.PENDING,
   })
   status: PaymentStatusEnum;
 
