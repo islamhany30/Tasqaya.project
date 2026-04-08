@@ -77,7 +77,7 @@ import { TaskModule } from './AllModules/Task/Task.module';
           Account,
           SupervisorPayout,
         ],
-        synchronize: false,
+        synchronize: true,
         logging: true,
       }),
     }),
