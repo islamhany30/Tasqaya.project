@@ -79,6 +79,9 @@ import { TaskModule } from './AllModules/Task/Task.module';
         ],
         synchronize: true,
         logging: true,
+        ssl: {
+          rejectUnauthorized: false,
+        }
       }),
     }),
 
