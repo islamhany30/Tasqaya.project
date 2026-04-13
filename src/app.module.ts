@@ -86,8 +86,10 @@ import { TaskModule } from './AllModules/Task/Task.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         connection: {
-          host: config.get<string>('REDIS_HOST') || 'localhost',
-          port: Number(config.get<number>('REDIS_PORT')) || 6379,
+          host: config.get<string>('REDISHOST') || config.get<string>('REDIS_HOST') || 'localhost',
+          port: Number(config.get<number>('REDISPORT')) || Number(config.get<number>('REDIS_PORT')) || 6379,
+          password: config.get<string>('REDISPASSWORD'), 
+          username: config.get<string>('REDISUSER') || 'default',
         },
       }),
     }),
