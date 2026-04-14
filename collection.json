@@ -1,0 +1,109 @@
+{
+  "info": {
+    "name": "Tasqaya API - Final Complete Collection",
+    "description": "Collection شاملة 100% مبنية على كل Controllers الموجودة في المشروع (Company, Worker, Supervisor, Admin, Task, Confirmation)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000", "type": "string" },
+    { "key": "auth_token", "value": "", "type": "string" },
+    { "key": "register_token", "value": "", "type": "string" },
+    { "key": "company_email", "value": "company@test.com", "type": "string" },
+    { "key": "worker_email", "value": "worker@test.com", "type": "string" },
+    { "key": "supervisor_email", "value": "supervisor@test.com", "type": "string" },
+    { "key": "admin_email", "value": "admin@test.com", "type": "string" },
+    { "key": "password", "value": "Test@12345", "type": "string" },
+    { "key": "task_id", "value": "1", "type": "string" },
+    { "key": "application_id", "value": "1", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 - Company",
+      "item": [
+        { "name": "Register Company", "request": { "method": "POST", "url": "{{base_url}}/api/company/register" } },
+        { "name": "Verify Company", "request": { "method": "POST", "url": "{{base_url}}/api/company/verify" } },
+        { "name": "Resend Verification", "request": { "method": "POST", "url": "{{base_url}}/api/company/resend-verification" } },
+        { "name": "Login Company", "request": { "method": "POST", "url": "{{base_url}}/api/company/login" } },
+        { "name": "Change Password", "request": { "method": "PATCH", "url": "{{base_url}}/api/company/change-password" } },
+        { "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/company/profile" } },
+        { "name": "Edit Profile", "request": { "method": "PATCH", "url": "{{base_url}}/api/company/edit-profile" } },
+        { "name": "Upload Profile Image", "request": { "method": "PUT", "url": "{{base_url}}/api/company/profile-image" } },
+        { "name": "Delete Account", "request": { "method": "DELETE", "url": "{{base_url}}/api/company/delete-account" } },
+
+        { "name": "Create Task", "request": { "method": "POST", "url": "{{base_url}}/api/company/create-task" } },
+        { "name": "Get My Tasks", "request": { "method": "GET", "url": "{{base_url}}/api/company/my-tasks" } },
+        { "name": "Get Task Details", "request": { "method": "GET", "url": "{{base_url}}/api/company/tasks/{{task_id}}" } },
+        { "name": "Update Task", "request": { "method": "PATCH", "url": "{{base_url}}/api/company/update/{{task_id}}" } },
+        { "name": "Delete Task", "request": { "method": "DELETE", "url": "{{base_url}}/api/company/delete-task/{{task_id}}" } },
+        { "name": "Get Payments", "request": { "method": "GET", "url": "{{base_url}}/api/company/payments" } }
+      ]
+    },
+    {
+      "name": "02 - Worker",
+      "item": [
+        { "name": "Register Worker", "request": { "method": "POST", "url": "{{base_url}}/api/worker/register" } },
+        { "name": "Verify Worker", "request": { "method": "POST", "url": "{{base_url}}/api/worker/verify" } },
+        { "name": "Resend Verification", "request": { "method": "POST", "url": "{{base_url}}/api/worker/resend-verification" } },
+        { "name": "Login Worker", "request": { "method": "POST", "url": "{{base_url}}/api/worker/login" } },
+        { "name": "Change Password", "request": { "method": "PATCH", "url": "{{base_url}}/api/worker/change-password" } },
+        { "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/worker/profile" } },
+        { "name": "Edit Profile", "request": { "method": "PATCH", "url": "{{base_url}}/api/worker/edit-profile" } },
+        { "name": "Upload Profile Image", "request": { "method": "PUT", "url": "{{base_url}}/api/worker/profile-image" } },
+
+        { "name": "Get Available Jobs", "request": { "method": "GET", "url": "{{base_url}}/api/worker/job-posts" } },
+        { "name": "Apply For Job", "request": { "method": "POST", "url": "{{base_url}}/api/worker/apply" } },
+        { "name": "Get My Applications", "request": { "method": "GET", "url": "{{base_url}}/api/worker/applications" } },
+        { "name": "Withdraw Application", "request": { "method": "DELETE", "url": "{{base_url}}/api/worker/applications/{{application_id}}" } }
+      ]
+    },
+    {
+      "name": "03 - Supervisor",
+      "item": [
+        { "name": "Register Supervisor", "request": { "method": "POST", "url": "{{base_url}}/api/supervisor/register" } },
+        { "name": "Verify Supervisor", "request": { "method": "POST", "url": "{{base_url}}/api/supervisor/verify" } },
+        { "name": "Resend Verification", "request": { "method": "POST", "url": "{{base_url}}/api/supervisor/resend-verification" } },
+        { "name": "Login Supervisor", "request": { "method": "POST", "url": "{{base_url}}/api/supervisor/login" } },
+        { "name": "Change Password", "request": { "method": "PATCH", "url": "{{base_url}}/api/supervisor/change-password" } },
+        { "name": "Get Profile", "request": { "method": "GET", "url": "{{base_url}}/api/supervisor/profile" } },
+        { "name": "Edit Profile", "request": { "method": "PATCH", "url": "{{base_url}}/api/supervisor/edit-profile" } },
+        { "name": "Upload Profile Image", "request": { "method": "PUT", "url": "{{base_url}}/api/supervisor/profile-image" } },
+
+        { "name": "Update WhatsApp Link", "request": { "method": "PATCH", "url": "{{base_url}}/api/supervisor/{{task_id}}/whatsapp-link" } },
+        { "name": "Upload Attendance", "request": { "method": "POST", "url": "{{base_url}}/api/supervisor/{{task_id}}/attendance" } },
+        { "name": "Get My Tasks", "request": { "method": "GET", "url": "{{base_url}}/api/supervisor/tasks" } },
+        { "name": "Get Task Details", "request": { "method": "GET", "url": "{{base_url}}/api/supervisor/tasks/{{task_id}}" } }
+      ]
+    },
+    {
+      "name": "04 - Admin",
+      "item": [
+        { "name": "Change Password", "request": { "method": "PATCH", "url": "{{base_url}}/api/admin/change-password" } },
+        { "name": "Get All Admins", "request": { "method": "GET", "url": "{{base_url}}/api/admin/get-all-admins" } },
+        { "name": "Get Admin Profile", "request": { "method": "GET", "url": "{{base_url}}/api/admin/get-admin-by-id" } },
+        { "name": "Edit Admin Profile", "request": { "method": "PATCH", "url": "{{base_url}}/api/admin/edit-profile" } },
+        { "name": "Upload Admin Image", "request": { "method": "PUT", "url": "{{base_url}}/api/admin/upload-profile-image" } },
+        { "name": "Delete Admin Account", "request": { "method": "DELETE", "url": "{{base_url}}/api/admin/delete-account" } },
+
+        { "name": "Change Company Status", "request": { "method": "PATCH", "url": "{{base_url}}/api/admin/manage/company/{{id}}/status" } },
+        { "name": "Get All Companies", "request": { "method": "GET", "url": "{{base_url}}/api/admin/manage/companies" } },
+        { "name": "Get Company By ID", "request": { "method": "GET", "url": "{{base_url}}/api/admin/manage/company/{{id}}" } },
+
+        { "name": "Change Supervisor Status", "request": { "method": "PATCH", "url": "{{base_url}}/api/admin/manage/supervisor/{{id}}/status" } },
+        { "name": "Get All Supervisors", "request": { "method": "GET", "url": "{{base_url}}/api/admin/manage/supervisors" } },
+
+        { "name": "Change Worker Status", "request": { "method": "PATCH", "url": "{{base_url}}/api/admin/manage/worker/{{id}}/status" } },
+        { "name": "Get All Workers", "request": { "method": "GET", "url": "{{base_url}}/api/admin/manage/workers" } },
+
+        { "name": "Get All Tasks (Admin)", "request": { "method": "GET", "url": "{{base_url}}/api/admin/manage/tasks" } },
+        { "name": "Get Task Details (Admin)", "request": { "method": "GET", "url": "{{base_url}}/api/admin/manage/tasks/{{task_id}}" } }
+      ]
+    },
+    {
+      "name": "05 - Confirmation",
+      "item": [
+        { "name": "Confirm (YES)", "request": { "method": "GET", "url": "{{base_url}}/api/confirm/YES/{{token}}" } },
+        { "name": "Decline (NO)", "request": { "method": "GET", "url": "{{base_url}}/api/confirm/NO/{{token}}" } }
+      ]
+    }
+  ]
+}

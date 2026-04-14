@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { Company } from '../../entities/Company';
@@ -10,6 +10,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { IAuthUser } from '../../Auth/interfaces/IAuthUser.interface';
 import { AuthService } from '../../Auth/Auth.service';
+import { CloudinaryService } from 'src/Cloudinary/cloudinary.service';
 
 @Injectable()
 export class CompanyService implements IAuthUser {
@@ -17,6 +18,7 @@ export class CompanyService implements IAuthUser {
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
     private readonly authService: AuthService,
+    private readonly cloudinaryService:CloudinaryService
   ) {}
 
   //IAuth CONTRACT
@@ -111,21 +113,32 @@ export class CompanyService implements IAuthUser {
   }
 
   //~~~~~~~~~~~~~~~~~~~ COMPANY DOMAIN SPECIFIC LOGIC ~~~~~~~~~~~~~~~~
-  async updateProfileImage(companyId: number, newImagePath: string) {
-    const company = await this.companyRepository.findOne({ where: { id: companyId } });
-    if (!company) throw new NotFoundException('company not found');
+ async updateProfileImage(companyId: number, imageFile: Express.Multer.File) {
+  // 1. التأكد من وجود الشركة
+  const company = await this.companyRepository.findOne({ where: { id: companyId } });
+  if (!company) throw new NotFoundException('Company not found');
 
-    if (company.profileImage) {
-      const oldImagePath = path.resolve(company.profileImage);
-      if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
-    }
+  try {
+    // 2. الرفع على Cloudinary (بياخد الـ Buffer من الرامات مباشرة)
+    const uploadResult = await this.cloudinaryService.uploadFile(imageFile);
+    
+    // ملاحظة: لو حابب تمسح القديم من كلوديناري هتحتاج الـ public_id
+    // بس حالياً اللينك الجديد هيستبدل القديم في الداتا بيز وده كافي جداً للمشروع
+    
+    const newImageUrl = uploadResult.secure_url;
 
-    company.profileImage = newImagePath;
+    // 3. تحديث المسار في الداتا بيز باللينك الجديد
+    company.profileImage = newImageUrl;
     await this.companyRepository.save(company);
 
-    return { message: 'Company profile image updated successfully', profileImage: newImagePath };
+    return { 
+      message: 'Company profile image updated successfully', 
+      profileImage: newImageUrl 
+    };
+  } catch (error) {
+    throw new BadRequestException('Failed to upload image to Cloudinary');
   }
-
+}
   async editProfile(companyId: number, dto: UpdateCompanyDto): Promise<any> {
     const company = await this.companyRepository.findOne({ where: { id: companyId } });
 

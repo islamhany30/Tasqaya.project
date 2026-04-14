@@ -20,6 +20,7 @@ import { CompanyFeedback } from 'src/entities/CompanyFeedback';
 import { TaskModule } from '../Task/Task.module';
 import { SupervisorPayout } from 'src/entities/SupervisorPayout';
 import { Attendance } from 'src/entities/Attendance';
+import { CloudinaryModule } from 'src/Cloudinary/cloudinary.module';
 // استورد باقي الـ Entities (SystemConfig, CompanyFeedback, etc.) من أماكنها الحقيقية
 // ---------------------------------------------------------
 
@@ -28,6 +29,7 @@ import { Attendance } from 'src/entities/Attendance';
     MailModule, 
     AuthModule, 
     TaskModule,
+    CloudinaryModule,
     TypeOrmModule.forFeature([
         Supervisor, 
         Task, 

@@ -14,6 +14,7 @@ import { SupervisorService } from '../Supervisor/Supervisor.service';
 import { WorkerService } from '../Worker/Worker.service';
 import { GetTasksFilterDto } from '../Task/Dto/GetTasksFilter.dto';
 import { TaskService } from '../Task/Task.service';
+import { CloudinaryService } from 'src/Cloudinary/cloudinary.service';
 
 @Injectable()
 export class AdminService implements IAuthUser {
@@ -25,6 +26,7 @@ export class AdminService implements IAuthUser {
     private readonly supervisorService: SupervisorService,
     private readonly workerService: WorkerService,
     private readonly taskService: TaskService,
+    private readonly cloudinaryService:CloudinaryService
   ) {}
 
   //IAuthUser Implementation (called by AuthService)
@@ -172,20 +174,32 @@ export class AdminService implements IAuthUser {
     };
   }
 
-  async updateProfileImage(adminId: number, newImagePath: string) {
-    const admin = await this.adminRepository.findOne({ where: { id: adminId } });
-    if (!admin) throw new NotFoundException('Admin not found');
+ async updateProfileImage(adminId: number, imageFile: Express.Multer.File) {
+  // 1. التأكد من وجود الشركة
+  const admin = await this.adminRepository.findOne({ where: { id: adminId } });
+  if (!admin) throw new NotFoundException('admin not found');
 
-    if (admin.profileImage) {
-      const oldImagePath = path.resolve(admin.profileImage);
-      if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
-    }
+  try {
+    // 2. الرفع على Cloudinary (بياخد الـ Buffer من الرامات مباشرة)
+    const uploadResult = await this.cloudinaryService.uploadFile(imageFile);
+    
+    // ملاحظة: لو حابب تمسح القديم من كلوديناري هتحتاج الـ public_id
+    // بس حالياً اللينك الجديد هيستبدل القديم في الداتا بيز وده كافي جداً للمشروع
+    
+    const newImageUrl = uploadResult.secure_url;
 
-    admin.profileImage = newImagePath;
+    // 3. تحديث المسار في الداتا بيز باللينك الجديد
+    admin.profileImage = newImageUrl;
     await this.adminRepository.save(admin);
 
-    return { message: 'Admin profile image updated successfully', profileImage: newImagePath };
+    return { 
+      message: 'admin profile image updated successfully', 
+      profileImage: newImageUrl 
+    };
+  } catch (error) {
+    throw new BadRequestException('Failed to upload image to Cloudinary');
   }
+}
 
   async changeCompanyStatus(id: number, dto: { isActive: boolean }) {
     return this.companyService.changeStatus(id, dto.isActive);
