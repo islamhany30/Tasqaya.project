@@ -41,7 +41,6 @@ import { TaskModule } from './AllModules/Task/Task.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env.development',
     }),
 
     ScheduleModule.forRoot(),
