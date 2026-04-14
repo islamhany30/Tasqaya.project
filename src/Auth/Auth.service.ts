@@ -107,7 +107,7 @@ export class AuthService {
       return { savedAccount };
     });
 
-    await this.mailService.sendMail({
+    this.mailService.sendMail({
       to: savedAccount.email,
       subject: emailSubject,
       text: `Your verification code: ${verificationCode}`,
