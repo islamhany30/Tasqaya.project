@@ -21,7 +21,9 @@ import { Worker } from 'src/entities/Worker';
 export class ConfirmationTokenService {
   private readonly logger = new Logger(ConfirmationTokenService.name);
   private readonly TOKEN_EXPIRY_HOURS = 12;
-  private readonly baseUrl = process.env.APP_BASE_URL || 'http://localhost:3000';
+  private readonly baseUrl = process.env.APP_BASE_URL || 'https://tasqaya-project-1.onrender.com';
+
+
 
   constructor(
     @InjectRepository(ConfirmationToken)
