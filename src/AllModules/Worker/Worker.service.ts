@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets } from 'typeorm';
+import { Repository, Brackets, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import { Worker } from 'src/entities/Worker';
