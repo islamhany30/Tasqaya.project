@@ -167,21 +167,40 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const account = await this.accountRepo.findOne({ where: { email } });
-    if (!account) throw new UnauthorizedException('Invalid email or password');
+  // 1. هات الأكونت بس الأول (سريع جداً)
+  const account = await this.accountRepo.findOne({ where: { email } });
 
-    const isMatch = await bcrypt.compare(password, account.password);
-    if (!isMatch) throw new UnauthorizedException('Invalid email or password');
-    if (!account.isActive) throw new ForbiddenException('This account has been deactivated');
+  if (!account) throw new UnauthorizedException('Invalid email or password');
 
-    const token = generateToken(this.jwtService, {
-      sub: account.id,
-      email: account.email,
-      role: account.role,
-    });
+  // 2. قارن الباسورد قبل ما تروح للجداول التانية (توفر وقت لو الباس غلط)
+  const isMatch = await bcrypt.compare(password, account.password);
+  if (!isMatch) throw new UnauthorizedException('Invalid email or password');
 
-    return { message: 'Login successful', token };
+  if (!account.isActive) throw new ForbiddenException('This account has been deactivated');
+
+  // 3. جيب الـ Profile اللي محتاجه بس بناءً على الـ Role
+  const roleRelation = account.role.toLowerCase(); // مثلاً 'worker'
+  const accountWithProfile = await this.accountRepo.findOne({
+    where: { id: account.id },
+    relations: [roleRelation],
+  });
+
+  const profile = accountWithProfile?.[roleRelation];
+
+  // 4. التشيك على الـ Verification
+  if (!profile?.isVerified) {
+    throw new ForbiddenException('Please verify your email before logging in');
   }
+
+  const token = generateToken(this.jwtService, {
+    sub: account.id,
+    email: account.email,
+    role: account.role,
+  });
+
+  return { message: 'Login successful', token };
+}
+
 
   //Change Password
   async changePassword(userId: number, oldPassword: string, newPassword: string, userService: IAuthUser) {
