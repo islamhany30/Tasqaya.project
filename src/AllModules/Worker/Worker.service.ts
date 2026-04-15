@@ -53,10 +53,12 @@ export class WorkerService implements IAuthUser {
     }
   }
 
-  async createUser(data: Partial<Worker>): Promise<any> {
-    const admin = this.workerRepository.create(data);
-    return await this.workerRepository.save(admin);
-  }
+async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
+  const repo = manager ? manager.getRepository(Worker) : this.workerRepository;
+
+  const worker = repo.create(data);
+  return await repo.save(worker);
+}
 
   async verifyUser(userId: number): Promise<void> {
     await this.workerRepository.update(userId, {
