@@ -59,71 +59,80 @@ export class AuthService {
   // لو أي حاجة فشلت (createUser / accountRepo.save) كل حاجة بترجع
   // الإيميل بيتبعت بعد الـ transaction عشان لو فشل ما يأثرش على الـ DB
 
-  async register(
-    dto: { email: string; password: string; [key: string]: any },
-    emailSubject: string,
-    userService: IAuthUser,
-    role: UserRole,
-  ) {
-    // ── 1. check email قبل الـ transaction عشان نوفر resources ──────────
-    const existingAccount = await this.accountRepo.findOne({
-      where: { email: dto.email },
-    });
+async register(
+  dto: { email: string; password: string; [key: string]: any },
+  emailSubject: string,
+  userService: IAuthUser,
+  role: UserRole,
+) {
+  // ── 1. check email ───────────────────────────────────────────────────
+  const existingAccount = await this.accountRepo.findOne({
+    where: { email: dto.email },
+  });
 
-    if (existingAccount) {
-      throw new BadRequestException(`${role} email is already registered`);
-    }
-
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const verificationCode = this.generateCode();
-    const expiry = new Date(Date.now() + 5 * 60 * 1000);
-
-    // ── 2. Transaction: account + profile مع بعض ─────────────────────────
-    const { savedAccount } = await this.dataSource.transaction(async (manager) => {
-      const accountRepoTx = manager.getRepository(Account);
-
-      const account = accountRepoTx.create({
-        email: dto.email,
-        password: hashedPassword,
-        role,
-      });
-
-      const savedAccount = await accountRepoTx.save(account);
-
-      await userService.createUser(
-        {
-          ...dto,
-          password: hashedPassword,
-          verificationCode,
-          verificationCodeExpiry: expiry,
-          isActive: true,
-          isVerified: false,
-          hashedPassword:hashedPassword,
-          account: savedAccount,
-        },
-        manager,
-      );
-
-      return { savedAccount };
-    });
-
-    this.mailService.sendMail({
-      to: savedAccount.email,
-      subject: emailSubject,
-      text: `Your verification code: ${verificationCode}`,
-    });
-
-    const token = generateToken(this.jwtService, {
-      sub: savedAccount.id,
-      email: savedAccount.email,
-      role: savedAccount.role,
-    });
-
-    return {
-      message: 'Registered successfully. Verification code sent via email',
-      token,
-    };
+  if (existingAccount) {
+    throw new BadRequestException(`${role} email is already registered`);
   }
+
+  const hashedPassword = await bcrypt.hash(dto.password, 10);
+  const verificationCode = this.generateCode();
+  const expiry = new Date(Date.now() + 5 * 60 * 1000);
+
+  // ── 2. تجهيز بيانات الـ User Profile ──────────────────────────────────
+  // نجهز الكائن الأساسي أولاً
+  let profileData: any = {
+    ...dto,
+    password: hashedPassword,
+    verificationCode,
+    verificationCodeExpiry: expiry,
+    isActive: true,
+    isVerified: false,
+    hashedPassword: hashedPassword,
+  };
+
+  // التحقق: إذا كان المستخدم عامل (Worker)، نربطه بمستوى BRONZE (ID: 4)
+  if (role === UserRole.WORKER) {
+    profileData.levelId = 4; // القيمة 4 بناءً على الريكورد الخاص بك
+  }
+
+  // ── 3. Transaction: account + profile ───────────────────────────────
+  const { savedAccount } = await this.dataSource.transaction(async (manager) => {
+    const accountRepoTx = manager.getRepository(Account);
+
+    const account = accountRepoTx.create({
+      email: dto.email,
+      password: hashedPassword,
+      role,
+    });
+
+    const savedAccount = await accountRepoTx.save(account);
+
+    // إضافة الـ account المرتبط للبيانات
+    profileData.account = savedAccount;
+
+    await userService.createUser(profileData, manager);
+
+    return { savedAccount };
+  });
+
+  // ── 4. Sending Email & Token ────────────────────────────────────────
+  this.mailService.sendMail({
+    to: savedAccount.email,
+    subject: emailSubject,
+    text: `Your verification code: ${verificationCode}`,
+  });
+
+  const token = generateToken(this.jwtService, {
+    sub: savedAccount.id,
+    email: savedAccount.email,
+    role: savedAccount.role,
+  });
+
+  return {
+    message: 'Registered successfully. Verification code sent via email',
+    token,
+  };
+}
 
   //Email Verification
   async verifyUser(code: string, userId: number, userService: IAuthUser) {
