@@ -65,7 +65,8 @@ async register(
   userService: IAuthUser,
   role: UserRole,
 ) {
-  // 1. التأكد من البريد الإلكتروني (موجود مسبقاً في كودك)
+  // ── 1. PRE-TRANSACTION CHECK ─────────────────────────────────────────
+  // Check if account email already exists to save resources
   const existingAccount = await this.accountRepo.findOne({
     where: { email: dto.email },
   });
@@ -74,22 +75,14 @@ async register(
     throw new BadRequestException(`${role} email is already registered`);
   }
 
-  // --- التعديل الجديد: التحقق من الـ National ID إذا كان المستخدم عامل ---
-  if (role === UserRole.WORKER && dto.nationalId) {
-    // ملاحظة: نحتاج للتأكد أن الـ userService لديه صلاحية الوصول لـ repository العامل
-    // أو الأفضل التحقق مباشرة من الـ Worker Repository إذا كان متاحاً في الـ AuthService
-    const existingWorker = await manager.getRepository(Worker).findOne({ 
-        where: { nationalId: dto.nationalId } 
-    });
-    // لكن بما أننا خارج الـ transaction، سنقوم بهذا الجزء بداخلها لضمان عدم حدوث Race Condition
-  }
-
   const hashedPassword = await bcrypt.hash(dto.password, 10);
   const verificationCode = this.generateCode();
   const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
+  // ── 2. TRANSACTION: ACCOUNT + PROFILE ────────────────────────────────
   const { savedAccount } = await this.dataSource.transaction(async (manager) => {
-    // --- تحقق الـ National ID داخل الـ Transaction لضمان الأمان القصوى ---
+    
+    // A. If the user is a WORKER, check for National ID uniqueness
     if (role === UserRole.WORKER && dto.nationalId) {
       const workerRepo = manager.getRepository(Worker);
       const existingWorker = await workerRepo.findOne({
@@ -97,10 +90,11 @@ async register(
       });
 
       if (existingWorker) {
-        throw new ConflictException('National ID is already registered');
+        throw new ConflictException(`National ID '${dto.nationalId}' is already registered`);
       }
     }
 
+    // B. Create and Save the Account
     const accountRepoTx = manager.getRepository(Account);
     const account = accountRepoTx.create({
       email: dto.email,
@@ -110,7 +104,7 @@ async register(
 
     const savedAccount = await accountRepoTx.save(account);
 
-    // تجهيز بيانات البروفايل
+    // C. Prepare Profile Data (Worker or Company)
     let profileData: any = {
       ...dto,
       password: hashedPassword,
@@ -122,18 +116,36 @@ async register(
       account: savedAccount,
     };
 
-    // تعيين المستوى البرونزي تلقائياً
+    // D. Assign Bronze Level (ID: 4) automatically if role is WORKER
     if (role === UserRole.WORKER) {
       profileData.levelId = 4;
     }
 
+    // E. Create the actual user profile (Worker/Company) using the manager
     await userService.createUser(profileData, manager);
 
     return { savedAccount };
   });
 
-  // بقية الكود (إرسال الإيميل والـ Token)...
-  // ...
+  // ── 3. POST-TRANSACTION LOGIC ────────────────────────────────────────
+  // Send Verification Email
+  this.mailService.sendMail({
+    to: savedAccount.email,
+    subject: emailSubject,
+    text: `Your verification code: ${verificationCode}`,
+  });
+
+  // Generate JWT Token
+  const token = generateToken(this.jwtService, {
+    sub: savedAccount.id,
+    email: savedAccount.email,
+    role: savedAccount.role,
+  });
+
+  return {
+    message: 'Registered successfully. Verification code sent via email',
+    token,
+  };
 }
 
   //Email Verification
