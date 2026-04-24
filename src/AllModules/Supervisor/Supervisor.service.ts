@@ -24,6 +24,7 @@ import { WorkerConfirmationStatusEnum } from 'src/Enums/worker-confirmation.enum
 import { TaskStatusEnum } from 'src/Enums/task-status.enum';
 import { PayoutStatusEnum } from 'src/Enums/payout-status.enum';
 import { SupervisorPayout } from 'src/entities/SupervisorPayout';
+import { CloudinaryService } from 'src/Cloudinary/cloudinary.service';
 
 @Injectable()
 export class SupervisorService implements IAuthUser {
@@ -41,6 +42,8 @@ export class SupervisorService implements IAuthUser {
 
     @InjectRepository(SupervisorPayout)
     private readonly supervisorPayoutRepo: Repository<SupervisorPayout>,
+
+    private readonly cloudinaryService:CloudinaryService
   ) {}
 
   async findByEmail(email: string): Promise<any> {
@@ -199,20 +202,32 @@ export class SupervisorService implements IAuthUser {
     };
   }
 
-  async updateProfileImage(supervisorId: number, newImagePath: string): Promise<any> {
-    const supervisor = await this.supervisorRepository.findOne({ where: { id: supervisorId } });
-    if (!supervisor) throw new NotFoundException('Supervisor not found');
+  async updateProfileImage(supervisorId: number, imageFile: Express.Multer.File) {
+  // 1. التأكد من وجود الشركة
+  const supervisor = await this.supervisorRepository.findOne({ where: { id: supervisorId } });
+  if (!supervisor) throw new NotFoundException('supervisor not found');
 
-    if (supervisor.profileImage && fs.existsSync(supervisor.profileImage)) {
-      fs.unlinkSync(supervisor.profileImage);
-    }
+  try {
+    // 2. الرفع على Cloudinary (بياخد الـ Buffer من الرامات مباشرة)
+    const uploadResult = await this.cloudinaryService.uploadFile(imageFile);
+    
+    // ملاحظة: لو حابب تمسح القديم من كلوديناري هتحتاج الـ public_id
+    // بس حالياً اللينك الجديد هيستبدل القديم في الداتا بيز وده كافي جداً للمشروع
+    
+    const newImageUrl = uploadResult.secure_url;
 
-    supervisor.profileImage = newImagePath;
+    // 3. تحديث المسار في الداتا بيز باللينك الجديد
+    supervisor.profileImage = newImageUrl;
     await this.supervisorRepository.save(supervisor);
 
-    return { message: 'Supervisor profile image updated successfully', profileImage: newImagePath };
+    return { 
+      message: 'supervisor profile image updated successfully', 
+      profileImage: newImageUrl 
+    };
+  } catch (error) {
+    throw new BadRequestException('Failed to upload image to Cloudinary');
   }
-
+}
   async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
     // 1. التأكد إن الـ supervisor assigned على التاسك دي
     const assignment = await this.taskSupervisorRepo.findOne({

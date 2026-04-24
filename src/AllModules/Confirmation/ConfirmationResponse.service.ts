@@ -146,7 +146,7 @@ export class ConfirmationResponseService {
     <p>As the assigned supervisor, please create a WhatsApp group for the team and add the invite link via the button below:</p>
     
     <div style="text-align: center; margin-top: 30px;">
-        <a href="http://localhost:3000/supervisor/tasks/${taskId}/update-link"
+<a href="https://tasqaya-project-1.onrender.com/supervisor/tasks/${taskId}/update-link"
          style="background-color: #25D366; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">
          Add WhatsApp Group Link
       </a>

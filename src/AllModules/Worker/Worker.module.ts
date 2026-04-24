@@ -11,12 +11,14 @@ import { JobPost } from 'src/entities/JobPost';
 import { Application } from 'src/entities/Application';
 import { WorkerController } from './Worker.controller';
 import { WorkerService } from './Worker.service';
+import { CloudinaryModule } from 'src/Cloudinary/cloudinary.module';
 
 @Module({
   imports: [
     MailModule,
     AuthModule,
     TaskModule,
+    CloudinaryModule,
     TypeOrmModule.forFeature([Worker, Admin, Task, Company, JobPost, Application]),
   ],
   controllers: [WorkerController],

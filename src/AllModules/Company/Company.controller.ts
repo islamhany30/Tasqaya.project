@@ -74,30 +74,26 @@ export class CompanyController {
   // PROFILE
   // ─────────────────────────────────────────────
 
-  @Put('profile-image')
-  @UseGuards(JwtAccountAuthGuard)
-  @UseInterceptors(
-    FileInterceptor('image', {
-      storage: diskStorage({
-        destination: path.join(process.cwd(), 'Uploads', 'Company-Profile'),
-        filename: (req, file, callback) => {
-          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          callback(null, `company-${uniqueSuffix}${extname(file.originalname)}`);
-        },
-      }),
-      fileFilter: (req, file, callback) => {
-        if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
-          return callback(new BadRequestException('Only jpg, jpeg, png files are allowed!'), false);
-        }
-        callback(null, true);
-      },
-      limits: { fileSize: 4 * 1024 * 1024 }, // 4MB
-    }),
-  )
-  async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req: any) {
-    if (!image) throw new BadRequestException('Image file is required');
-    return this.companyService.updateProfileImage(Number(req.user.sub), image.path);
-  }
+@Put('profile-image')
+@UseGuards(JwtAccountAuthGuard)
+@UseInterceptors(
+  FileInterceptor('image', {
+    // شلنا diskStorage خالص عشان ميسيفش محلي ويطلب ريستارت
+    fileFilter: (req, file, callback) => {
+      if (!file.mimetype.match(/\/(jpg|jpeg|png)$/)) {
+        return callback(new BadRequestException('Only jpg, jpeg, png files are allowed!'), false);
+      }
+      callback(null, true);
+    },
+    limits: { fileSize: 4 * 1024 * 1024 }, // 4MB
+  }),
+)
+async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req: any) {
+  if (!image) throw new BadRequestException('Image file is required');
+  
+  // بنبعت الـ image object كامل (اللي جواه الـ buffer) مش الـ path
+  return this.companyService.updateProfileImage(Number(req.user.sub), image);
+}
 
   @UseGuards(JwtAccountAuthGuard)
   @Get('profile')

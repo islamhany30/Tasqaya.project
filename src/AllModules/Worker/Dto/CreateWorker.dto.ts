@@ -18,7 +18,7 @@ export class CreateWorkerDto {
   @IsString()
   @IsNotEmpty()
   @Length(14, 14, { message: 'National ID must be exactly 14 digits' })
-  nationalId: Number;
+  nationalId: string;
 
   @IsString()
   @IsNotEmpty()

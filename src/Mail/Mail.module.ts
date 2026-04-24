@@ -1,28 +1,9 @@
 import { Module } from '@nestjs/common';
-import { MailerModule } from '@nestjs-modules/mailer';
+import { ConfigModule } from '@nestjs/config';
 import { MailService } from './MailService';
-import { ConfigService } from '@nestjs/config';
 
 @Module({
-  imports: [
-    MailerModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        transport: {
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          auth: {
-            user: configService.get<string>('MAIL_USER'),
-            pass: configService.get<string>('MAIL_PASS'),
-          },
-        },
-        defaults: {
-          from: '"Taqaya" <tasqaya585@gmail.com>',
-        },
-      }),
-    }),
-  ],
+  imports: [ConfigModule],
   providers: [MailService],
   exports: [MailService],
 })

@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
   BadRequestException,
+  ConflictException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -59,71 +60,94 @@ export class AuthService {
   // لو أي حاجة فشلت (createUser / accountRepo.save) كل حاجة بترجع
   // الإيميل بيتبعت بعد الـ transaction عشان لو فشل ما يأثرش على الـ DB
 
-  async register(
-    dto: { email: string; password: string; [key: string]: any },
-    emailSubject: string,
-    userService: IAuthUser,
-    role: UserRole,
-  ) {
-    // ── 1. check email قبل الـ transaction عشان نوفر resources ──────────
-    const existingAccount = await this.accountRepo.findOne({
-      where: { email: dto.email },
-    });
+async register(
+  dto: { email: string; password: string; [key: string]: any },
+  emailSubject: string,
+  userService: IAuthUser,
+  role: UserRole,
+) {
+  // ── 1. PRE-TRANSACTION CHECK ─────────────────────────────────────────
+  // Check if account email already exists to save resources
+  const existingAccount = await this.accountRepo.findOne({
+    where: { email: dto.email },
+  });
 
-    if (existingAccount) {
-      throw new BadRequestException(`${role} email is already registered`);
-    }
+  if (existingAccount) {
+    throw new BadRequestException(`${role} email is already registered`);
+  }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
-    const verificationCode = this.generateCode();
-    const expiry = new Date(Date.now() + 5 * 60 * 1000);
+  const hashedPassword = await bcrypt.hash(dto.password, 10);
+  const verificationCode = this.generateCode();
+  const expiry = new Date(Date.now() + 5 * 60 * 1000);
 
-    // ── 2. Transaction: account + profile مع بعض ─────────────────────────
-    const { savedAccount } = await this.dataSource.transaction(async (manager) => {
-      const accountRepoTx = manager.getRepository(Account);
-
-      const account = accountRepoTx.create({
-        email: dto.email,
-        password: hashedPassword,
-        role,
+  // ── 2. TRANSACTION: ACCOUNT + PROFILE ────────────────────────────────
+  const { savedAccount } = await this.dataSource.transaction(async (manager) => {
+    
+    // A. If the user is a WORKER, check for National ID uniqueness
+    if (role === UserRole.WORKER && dto.nationalId) {
+      const workerRepo = manager.getRepository(Worker);
+      const existingWorker = await workerRepo.findOne({
+        where: { nationalId: dto.nationalId },
       });
 
-      const savedAccount = await accountRepoTx.save(account);
+      if (existingWorker) {
+        throw new ConflictException(`National ID '${dto.nationalId}' is already registered`);
+      }
+    }
 
-      await userService.createUser(
-        {
-          ...dto,
-          password: hashedPassword,
-          verificationCode,
-          verificationCodeExpiry: expiry,
-          isActive: true,
-          isVerified: false,
-          hashedPassword:hashedPassword,
-          account: savedAccount,
-        },
-        manager,
-      );
-
-      return { savedAccount };
+    // B. Create and Save the Account
+    const accountRepoTx = manager.getRepository(Account);
+    const account = accountRepoTx.create({
+      email: dto.email,
+      password: hashedPassword,
+      role,
     });
 
-    await this.mailService.sendMail({
-      to: savedAccount.email,
-      subject: emailSubject,
-      text: `Your verification code: ${verificationCode}`,
-    });
+    const savedAccount = await accountRepoTx.save(account);
 
-    const token = generateToken(this.jwtService, {
-      sub: savedAccount.id,
-      email: savedAccount.email,
-      role: savedAccount.role,
-    });
-
-    return {
-      message: 'Registered successfully. Verification code sent via email',
-      token,
+    // C. Prepare Profile Data (Worker or Company)
+    let profileData: any = {
+      ...dto,
+      password: hashedPassword,
+      verificationCode,
+      verificationCodeExpiry: expiry,
+      isActive: true,
+      isVerified: false,
+      hashedPassword: hashedPassword,
+      account: savedAccount,
     };
-  }
+
+    // D. Assign Bronze Level (ID: 4) automatically if role is WORKER
+    if (role === UserRole.WORKER) {
+      profileData.levelId = 4;
+    }
+
+    // E. Create the actual user profile (Worker/Company) using the manager
+    await userService.createUser(profileData, manager);
+
+    return { savedAccount };
+  });
+
+  // ── 3. POST-TRANSACTION LOGIC ────────────────────────────────────────
+  // Send Verification Email
+  this.mailService.sendMail({
+    to: savedAccount.email,
+    subject: emailSubject,
+    text: `Your verification code: ${verificationCode}`,
+  });
+
+  // Generate JWT Token
+  const token = generateToken(this.jwtService, {
+    sub: savedAccount.id,
+    email: savedAccount.email,
+    role: savedAccount.role,
+  });
+
+  return {
+    message: 'Registered successfully. Verification code sent via email',
+    token,
+  };
+}
 
   //Email Verification
   async verifyUser(code: string, userId: number, userService: IAuthUser) {
@@ -167,21 +191,40 @@ export class AuthService {
   }
 
   async login(email: string, password: string) {
-    const account = await this.accountRepo.findOne({ where: { email } });
-    if (!account) throw new UnauthorizedException('Invalid email or password');
+  // 1. هات الأكونت بس الأول (سريع جداً)
+  const account = await this.accountRepo.findOne({ where: { email } });
 
-    const isMatch = await bcrypt.compare(password, account.password);
-    if (!isMatch) throw new UnauthorizedException('Invalid email or password');
-    if (!account.isActive) throw new ForbiddenException('This account has been deactivated');
+  if (!account) throw new UnauthorizedException('Invalid email or password');
 
-    const token = generateToken(this.jwtService, {
-      sub: account.id,
-      email: account.email,
-      role: account.role,
-    });
+  // 2. قارن الباسورد قبل ما تروح للجداول التانية (توفر وقت لو الباس غلط)
+  const isMatch = await bcrypt.compare(password, account.password);
+  if (!isMatch) throw new UnauthorizedException('Invalid email or password');
 
-    return { message: 'Login successful', token };
+  if (!account.isActive) throw new ForbiddenException('This account has been deactivated');
+
+  // 3. جيب الـ Profile اللي محتاجه بس بناءً على الـ Role
+  const roleRelation = account.role.toLowerCase(); // مثلاً 'worker'
+  const accountWithProfile = await this.accountRepo.findOne({
+    where: { id: account.id },
+    relations: [roleRelation],
+  });
+
+  const profile = accountWithProfile?.[roleRelation];
+
+  // 4. التشيك على الـ Verification
+  if (!profile?.isVerified) {
+    throw new ForbiddenException('Please verify your email before logging in');
   }
+
+  const token = generateToken(this.jwtService, {
+    sub: account.id,
+    email: account.email,
+    role: account.role,
+  });
+
+  return { message: 'Login successful', token };
+}
+
 
   //Change Password
   async changePassword(userId: number, oldPassword: string, newPassword: string, userService: IAuthUser) {

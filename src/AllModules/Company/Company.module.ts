@@ -10,10 +10,12 @@ import { CompanyController } from './Company.controller';
 import { CompanyService } from './Company.service';
 import { Module } from '@nestjs/common';
 import { Admin } from '../../entities/Admin';
+import { CloudinaryModule } from 'src/Cloudinary/cloudinary.module';
 
 @Module({
   imports: [
     MailModule,
+    CloudinaryModule,
     AuthModule,
     TaskModule,
     PaymentModule,

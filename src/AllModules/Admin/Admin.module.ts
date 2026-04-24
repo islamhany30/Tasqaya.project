@@ -10,6 +10,7 @@ import { AuthModule } from 'src/Auth/Auth.module';
 import { SupervisorModule } from '../Supervisor/Supervisor.module';
 import { WorkerModule } from '../Worker/Worker.module';
 import { TaskModule } from '../Task/Task.module';
+import { CloudinaryModule } from 'src/Cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { TaskModule } from '../Task/Task.module';
     CompanyModule,
     WorkerModule,
     SupervisorModule,
+    CloudinaryModule,
     TaskModule,
     TypeOrmModule.forFeature([Admin, Company]),
   ],

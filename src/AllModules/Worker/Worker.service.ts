@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Brackets } from 'typeorm';
+import { Repository, Brackets, EntityManager } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import { Worker } from 'src/entities/Worker';
@@ -24,6 +24,7 @@ import { ApplicationStatusEnum } from 'src/Enums/application-status.enum';
 import { IAuthUser } from 'src/Auth/interfaces/IAuthUser.interface';
 import { AuthService } from 'src/Auth/Auth.service';
 import { TaskService } from '../Task/Task.service';
+import { CloudinaryService } from 'src/Cloudinary/cloudinary.service';
 @Injectable()
 export class WorkerService implements IAuthUser {
   constructor(
@@ -33,6 +34,7 @@ export class WorkerService implements IAuthUser {
     @InjectRepository(Task) private readonly taskRepository: Repository<Task>,
     private readonly taskService: TaskService,
     private readonly authService: AuthService,
+    private readonly cloudinaryService:CloudinaryService
   ) {}
 
   async findByEmail(email: string): Promise<any> {
@@ -51,10 +53,12 @@ export class WorkerService implements IAuthUser {
     }
   }
 
-  async createUser(data: Partial<Worker>): Promise<any> {
-    const admin = this.workerRepository.create(data);
-    return await this.workerRepository.save(admin);
-  }
+async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
+  const repo = manager ? manager.getRepository(Worker) : this.workerRepository;
+
+  const worker = repo.create(data);
+  return await repo.save(worker);
+}
 
   async verifyUser(userId: number): Promise<void> {
     await this.workerRepository.update(userId, {
@@ -213,23 +217,32 @@ export class WorkerService implements IAuthUser {
     };
   }
 
-  async uploadProfileImage(workerId: number, newImagePath: string): Promise<any> {
-    const worker = await this.findById(workerId);
+ async updateProfileImage(workerId: number, imageFile: Express.Multer.File) {
+  // 1. التأكد من وجود الشركة
+  const worker = await this.workerRepository.findOne({ where: { id: workerId } });
+  if (!worker) throw new NotFoundException('worker not found');
 
-    if (!worker) throw new NotFoundException('User not found');
+  try {
+    // 2. الرفع على Cloudinary (بياخد الـ Buffer من الرامات مباشرة)
+    const uploadResult = await this.cloudinaryService.uploadFile(imageFile);
+    
+    // ملاحظة: لو حابب تمسح القديم من كلوديناري هتحتاج الـ public_id
+    // بس حالياً اللينك الجديد هيستبدل القديم في الداتا بيز وده كافي جداً للمشروع
+    
+    const newImageUrl = uploadResult.secure_url;
 
-    if (worker.profileImage && fs.existsSync(worker.profileImage)) {
-      fs.unlinkSync(worker.profileImage);
-    }
-
-    worker.profileImage = newImagePath;
+    // 3. تحديث المسار في الداتا بيز باللينك الجديد
+    worker.profileImage = newImageUrl;
     await this.workerRepository.save(worker);
 
-    return {
-      message: 'Profile image updated successfully',
-      profileImage: newImagePath,
+    return { 
+      message: 'Company profile image updated successfully', 
+      profileImage: newImageUrl 
     };
+  } catch (error) {
+    throw new BadRequestException('Failed to upload image to Cloudinary');
   }
+}
 
   
 

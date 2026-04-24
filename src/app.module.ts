@@ -41,7 +41,6 @@ import { TaskModule } from './AllModules/Task/Task.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env.development',
     }),
 
     ScheduleModule.forRoot(),
@@ -77,17 +76,23 @@ import { TaskModule } from './AllModules/Task/Task.module';
           Account,
           SupervisorPayout,
         ],
-        synchronize: false,
+        synchronize: true,
         logging: true,
+        ssl: {
+          rejectUnauthorized: false,
+        }
       }),
     }),
 
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        connection: {
-          host: config.get<string>('REDIS_HOST') || 'localhost',
-          port: Number(config.get<number>('REDIS_PORT')) || 6379,
+       connection: config.get<string>('REDIS_URL') ? {
+        url: config.get<string>('REDIS_URL') // BullMQ بيفهم الـ URL لو بعته كدة
+        } : {
+          host: config.get<string>('REDISHOST') || 'localhost',
+          port: config.get<number>('REDISPORT') || 6379,
+          password: config.get<string>('REDISPASSWORD'),
         },
       }),
     }),
