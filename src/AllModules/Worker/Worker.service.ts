@@ -186,17 +186,23 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
   }
 
   async getWorkerById(workerId: number): Promise<any> {
-    const worker = await this.findById(workerId);
+  const worker = await this.workerRepository.findOne({
+    where: { id: workerId },
+    relations: ['level'],   // ← بيجيب الـ level object كامل
+  });
 
-    if (!worker) throw new NotFoundException('User not found');
+  if (!worker) throw new NotFoundException('User not found');
 
-    return {
-      message: 'Worker profile fetched successfully',
-      data: {
-        worker,
+  return {
+    message: 'Worker profile fetched successfully',
+    data: {
+      worker: {
+        ...worker,
+        level: worker.level?.levelName ?? null,  // ← بترجع الاسم بس مش الـ object
       },
-    };
-  }
+    },
+  };
+}
 
   async editProfile(workerId: number, dto: UpdateWorkerDto): Promise<any> {
     const worker = await this.findById(workerId);
