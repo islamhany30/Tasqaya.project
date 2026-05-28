@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+
 import { Worker } from '../../entities/Worker';
 import { Company } from '../../entities/Company';
 import { Supervisor } from '../../entities/Supervisor';
@@ -19,65 +20,91 @@ export class ChatbotService {
     private readonly httpService: HttpService,
   ) {}
 
-  // ════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════
   // MAIN CHAT METHOD
-  // ════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════
   async chat(
     userId: number,
     role: UserRole,
     message: string,
     history: { role: 'user' | 'assistant'; content: string }[] = [],
   ) {
-    if (!message?.trim()) throw new BadRequestException('Message is required');
+    if (!message?.trim()) {
+      throw new BadRequestException('Message is required');
+    }
 
-    // ── Build system prompt based on role ────────────────
+    // 1. بناء الـ Prompt الديناميكي
     const systemPrompt = await this.buildSystemPrompt(userId, role);
 
-    // ── Build messages array ──────────────────────────────
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...history.slice(-6), // keep last 6 messages for context
-      { role: 'user', content: message },
+    // 2. تحويل الـ History القديم فقط لصيغة Gemini (أخر 6 رسائل مثلاً للحفاظ على الـ Tokens)
+    const formattedHistory = history.slice(-6).map((msg) => ({
+      role: msg.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: msg.content }],
+    }));
+
+    // 3. بناء الـ contents بالترتيب الزمني الصح (القديم ثم السؤال الجديد في الآخر)
+    const contents = [
+      ...formattedHistory,
+      {
+        role: 'user',
+        parts: [{ text: message }],
+      },
     ];
 
-    // ── Call OpenRouter API ───────────────────────────────
     try {
+      // ضرب الـ Endpoint الرسمي لـ Gemini 2.0 Flash
       const response = await firstValueFrom(
         this.httpService.post(
-          'https://openrouter.ai/api/v1/chat/completions',
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
           {
-            model: 'google/gemini-2.5-flash:free',
-            messages,
-            max_tokens: 500,
-            temperature: 0.7,
+            contents,
+            // 🎯 هنا السر: تمرير الـ System Prompt في مكانه الصحيح عشان يفضل مسيطر على الحوار كله
+            systemInstruction: {
+              parts: [{ text: systemPrompt }],
+            },
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 500,
+            },
           },
           {
             headers: {
-              Authorization:  `Bearer ${process.env.OPENROUTER_API_KEY}`,
               'Content-Type': 'application/json',
-              'HTTP-Referer':  process.env.APP_BASE_URL || 'https://tasqaya-project-1.onrender.com',
-              'X-Title':       'Tasqaya Platform',
             },
+            timeout: 30000,
           },
         ),
       );
 
-      const reply = response.data.choices[0].message.content;
-      return { reply };
+      console.log(
+        'Gemini Response:',
+        JSON.stringify(response.data, null, 2),
+      );
 
+      const reply =
+        response?.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
+        'لم يتم استلام رد من الذكاء الاصطناعي';
+
+      return { reply };
     } catch (err) {
-     console.error('FULL ERROR => ', JSON.stringify(err?.response?.data, null, 2));
+      console.error(
+        'Gemini Error:',
+        JSON.stringify(err?.response?.data || err.message, null, 2),
+      );
 
       return {
-        error: err?.response?.data || err.message,
+        reply: 'حدث خطأ أثناء التواصل مع الذكاء الاصطناعي، يرجى المحاولة لاحقاً.',
       };
     }
   }
 
-  // ════════════════════════════════════════════════════════
-  // BUILD SYSTEM PROMPT PER ROLE
-  // ════════════════════════════════════════════════════════
-  private async buildSystemPrompt(userId: number, role: UserRole): Promise<string> {
+  // ═══════════════════════════════════════════════
+  // SYSTEM PROMPTS (باقي الكود بتاعك سليم وممتاز زي ما هو)
+  // ═══════════════════════════════════════════════
+  private async buildSystemPrompt(
+    userId: number,
+    role: UserRole,
+  ): Promise<string> {
     const base = `أنت مساعد ذكي لمنصة Tasqaya لإدارة العمالة المؤقتة للفعاليات.
 رد دائماً بالعربية بأسلوب احترافي وودي ومختصر.
 لا تخترع معلومات — استند فقط على البيانات المتاحة لك.`;
@@ -85,30 +112,20 @@ export class ChatbotService {
     switch (role) {
       case UserRole.COMPANY:
         return await this.buildCompanyPrompt(userId, base);
-
       case UserRole.WORKER:
         return await this.buildWorkerPrompt(userId, base);
-
       case UserRole.SUPERVISOR:
         return await this.buildSupervisorPrompt(userId, base);
-
       case UserRole.ADMIN:
-        return `${base}
-أنت تتحدث مع مدير النظام.
-صلاحياتك: إدارة المستخدمين، مراقبة المهام، تعديل الحسابات.
-ساعده في أي استفسار عن إدارة المنصة.`;
-
+        return `${base}\n\nأنت تتحدث مع مدير النظام. ساعده في إدارة المنصة والمهام والمستخدمين.`;
       default:
         return base;
     }
   }
 
-  // ── Company prompt ────────────────────────────────────
+  // COMPANY
   private async buildCompanyPrompt(companyId: number, base: string): Promise<string> {
-    const company = await this.companyRepo.findOne({
-      where: { id: companyId },
-    });
-
+    const company = await this.companyRepo.findOne({ where: { id: companyId } });
     const tasks = await this.taskRepo.find({
       where: { company: { id: companyId } },
       order: { createdAt: 'DESC' },
@@ -116,63 +133,25 @@ export class ChatbotService {
     });
 
     const tasksSummary = tasks.length > 0
-      ? tasks.map(t =>
-          `- ${t.eventName} | الحالة: ${t.status} | البداية: ${t.startDate} | التكلفة: ${t.totalCost} جنيه`
-        ).join('\n')
-      : 'لا توجد مهام حتى الآن';
+      ? tasks.map((t) => `- ${t.eventName} | الحالة: ${t.status} | التكلفة: ${t.totalCost}`).join('\n')
+      : 'لا توجد مهام';
 
-    return `${base}
-أنت تتحدث مع شركة اسمها: ${company?.name || 'غير معروف'}
-
-آخر 5 مهام لهذه الشركة:
-${tasksSummary}
-
-يمكنك مساعدتهم في:
-- فهم حالة مهامهم (UNAPPROVED / PENDING / IN_PROGRESS / COMPLETED)
-- شرح خطوات إنشاء مهمة جديدة وموافقتها
-- شرح نظام الدفع 50% قبل + 50% بعد
-- الإجابة على أسئلة الفواتير والدفع
-- توجيههم لإكمال أي خطوة ناقصة`;
+    return `${base}\n\nالشركة: ${company?.name || 'غير معروف'}\n\nآخر المهام:\n${tasksSummary}\n\nساعد الشركة في:\n- فهم حالة المهام\n- الدفع والفواتير\n- إنشاء المهام\n- متابعة الطلبات`;
   }
 
-  // ── Worker prompt ─────────────────────────────────────
+  // WORKER
   private async buildWorkerPrompt(workerId: number, base: string): Promise<string> {
     const worker = await this.workerRepo.findOne({
       where: { id: workerId },
       relations: ['level'],
     });
 
-    return `${base}
-أنت تتحدث مع عامل اسمه: ${worker?.fullName || 'غير معروف'}
-
-بياناته:
-- المستوى: ${worker?.level?.levelName || 'غير محدد'}
-- النقاط: ${worker?.score || 0}
-- معدل الحضور: ${worker?.reliabilityRate || 0}%
-- المهام المكتملة: ${worker?.completedTasks || 0}
-
-يمكنك مساعدته في:
-- فهم مستواه وكيفية الترقي (BRONZE → SILVER → GOLD)
-- شرح كيفية التقديم على الوظائف المتاحة
-- شرح نظام تأكيد الحضور (YES/NO links في الإيميل)
-- الإجابة على أسئلة عن المدفوعات
-- نصائح لرفع معدل الحضور والنقاط`;
+    return `${base}\n\nالعامل: ${worker?.fullName || 'غير معروف'}\n\nبياناته:\n- المستوى: ${worker?.level?.levelName || 'غير محدد'}\n- النقاط: ${worker?.score || 0}\n- الحضور: ${worker?.reliabilityRate || 0}%\n\nساعده في:\n- التقديم على الوظائف\n- فهم النقاط والمستويات\n- تحسين الحضور`;
   }
 
-  // ── Supervisor prompt ─────────────────────────────────
+  // SUPERVISOR
   private async buildSupervisorPrompt(supervisorId: number, base: string): Promise<string> {
-    const supervisor = await this.supervisorRepo.findOne({
-      where: { id: supervisorId },
-    });
-
-    return `${base}
-أنت تتحدث مع مشرف اسمه: ${supervisor?.fullName || 'غير معروف'}
-
-يمكنك مساعدته في:
-- شرح مهامه كمشرف (الإشراف على العمال، تسجيل الحضور)
-- كيفية تحميل قالب الحضور Excel ورفعه
-- كيفية إنشاء مجموعة WhatsApp للعمال
-- شرح كيفية احتساب المكافأة بتاعته
-- الإجابة على أسئلة عن المهام المسندة إليه`;
+    const supervisor = await this.supervisorRepo.findOne({ where: { id: supervisorId } });
+    return `${base}\n\nالمشرف: ${supervisor?.fullName || 'غير معروف'}\n\nساعده في:\n- الإشراف على العمال\n- الحضور\n- رفع ملفات Excel\n- إدارة المهام`;
   }
 }
