@@ -105,8 +105,10 @@ export class ChatbotService {
 
       if (functionCalls && functionCalls.length > 0) {
         const call = functionCalls[0];
-        const { name, args } = call;
+        const { name } = call;
         
+        // 🎯 تأمين الـ args والتأكد من أنها ليست undefined لمنع إيرور الـ TS
+        const args = call.args as Record<string, any> || {};
         let functionResult: any;
 
         // 🔀 الـ Routing الذكي بناءً على قرار جمناي
@@ -117,11 +119,10 @@ export class ChatbotService {
           });
         } 
         else if (name === 'getCompanyDashboardStats') {
-          // جلب الإحصائيات مباشرة من الـ Query المكتوب في الـ TaskService بتاعك
           functionResult = await this.executeCompanyStatsRaw(Number(args.companyId));
         } 
         else if (name === 'executeReadOnlyQuery') {
-          functionResult = await this.handleReadOnlySql(args.sqlQuery as string);
+          functionResult = await this.handleReadOnlySql((args.sqlQuery as string) || '');
         }
 
         // إرسال نتيجة الدالة لجمناي ليصيغ الرد البشري النهائي
@@ -159,6 +160,10 @@ export class ChatbotService {
   private async handleReadOnlySql(query: string): Promise<any> {
     const cleanQuery = query.trim().toUpperCase();
 
+    if (!cleanQuery) {
+      return { error: 'Empty query provided.' };
+    }
+
     // جدار حماية صارم لمنع أي محاولة تعديل أو تخريب في الداتا بيز
     if (!cleanQuery.startsWith('SELECT')) {
       return { error: 'Security Violation: Only SELECT queries are permitted.' };
@@ -170,7 +175,7 @@ export class ChatbotService {
     try {
       // تنفيذ الاستعلام على الداتابيز مباشرة
       return await this.dataSource.query(query);
-    } catch (dbError) {
+    } catch (dbError: any) {
       return { error: `Database execution error: ${dbError.message}` };
     }
   }
