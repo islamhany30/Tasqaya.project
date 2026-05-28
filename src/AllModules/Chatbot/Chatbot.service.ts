@@ -46,7 +46,7 @@ export class ChatbotService {
         this.httpService.post(
           'https://openrouter.ai/api/v1/chat/completions',
           {
-            model: 'google/gemini-2.0-flash-exp:free',
+            model: 'meta-llama/llama-3.1-8b-instruct:free',
             messages,
             max_tokens: 500,
             temperature: 0.7,
@@ -66,9 +66,10 @@ export class ChatbotService {
       return { reply };
 
     } catch (err) {
-      console.error('OpenRouter error:', err?.response?.data || err.message);
+     console.error('FULL ERROR => ', JSON.stringify(err?.response?.data, null, 2));
+
       return {
-        reply: 'عذراً، حدث خطأ مؤقت. حاول مرة أخرى.',
+        error: err?.response?.data || err.message,
       };
     }
   }
