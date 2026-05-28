@@ -88,7 +88,7 @@ export class ChatbotService {
 
       // 1. الخطوة الأولى: إرسال السؤال والأدوات لموديل gemini-1.5-flash
       let response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash', // التحديث للموديل المستقر ذو الليميت المفتوح
+        model: 'gemini-2.5-pro', // التحديث للموديل المستقر ذو الليميت المفتوح
         config: {
           systemInstruction: systemPrompt,
           temperature: 0.1, // منخفضة جداً لضمان دقة وصرامة كتابة الـ SQL والتزام الموديل بالداتا
