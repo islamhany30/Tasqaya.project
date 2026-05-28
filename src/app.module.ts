@@ -4,7 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
-
+import { ChatbotModule } from './AllModules/Chatbot/Chatbot.module';
 import { MailModule } from './Mail/Mail.module';
 
 // Modules
@@ -104,6 +104,7 @@ import { TaskModule } from './AllModules/Task/Task.module';
     MailModule,
     ConfirmationModule,
     TaskModule,
+    ChatbotModule,
   ],
 
   providers: [
