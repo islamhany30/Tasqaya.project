@@ -94,6 +94,8 @@ export class ChatbotService {
 
       return {
         reply: 'حدث خطأ أثناء التواصل مع الذكاء الاصطناعي، يرجى المحاولة لاحقاً.',
+        actual_error: err.message,
+        gemini_details: err?.response?.data || 'No response data'
       };
     }
   }
