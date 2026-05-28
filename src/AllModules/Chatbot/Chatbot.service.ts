@@ -55,7 +55,7 @@ export class ChatbotService {
       // ضرب الـ Endpoint الرسمي لـ Gemini 2.0 Flash
       const response = await firstValueFrom(
         this.httpService.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
           {
             contents,
             // 🎯 هنا السر: تمرير الـ System Prompt في مكانه الصحيح عشان يفضل مسيطر على الحوار كله
