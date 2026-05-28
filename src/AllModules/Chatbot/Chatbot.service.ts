@@ -1,19 +1,17 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 
 import { Worker } from '../../entities/Worker';
 import { Company } from '../../entities/Company';
 import { Supervisor } from '../../entities/Supervisor';
 import { Task } from '../../entities/Task';
 import { UserRole } from '../../Enums/User.role';
-
-// 1. استيراد المكتبة الرسمية والأحدث من جوجل 🎯
-import { GoogleGenAI } from '@google/genai'; 
+import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 
 @Injectable()
 export class ChatbotService {
-  // 2. تعريف الـ SDK بمفتاح الـ API بتاعك من الـ .env
+  // تعريف الـ SDK بمفتاح الـ API الخاص بك من ملف الـ .env
   private ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
   constructor(
@@ -21,10 +19,50 @@ export class ChatbotService {
     @InjectRepository(Company)    private companyRepo:    Repository<Company>,
     @InjectRepository(Supervisor) private supervisorRepo: Repository<Supervisor>,
     @InjectRepository(Task)       private taskRepo:       Repository<Task>,
+    private dataSource: DataSource, // لتنفيذ استعلامات الـ SQL الديناميكية بأمان
   ) {}
 
   // ═══════════════════════════════════════════════
-  // MAIN CHAT METHOD
+  // DEFINING TOOLS (FUNCTIONS DECLARATIONS)
+  // ═══════════════════════════════════════════════
+  
+  // 1. أداة جلب بروفايل العامل الحالي
+  private getWorkerProfileTool: FunctionDeclaration = {
+    name: 'getWorkerProfile',
+    description: 'Fetches the complete profile details of the currently logged-in worker, including their score, reliability rate, and level.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: { workerId: { type: Type.INTEGER, description: 'The ID of the worker' } },
+      required: ['workerId'],
+    },
+  };
+
+  // 2. أداة جلب إحصائيات لوحة تحكم الشركة
+  private getCompanyStatsTool: FunctionDeclaration = {
+    name: 'getCompanyDashboardStats',
+    description: 'Fetches dashboard analytics for a company including total tasks count by status, active/completed tasks, total spent, pending payments, and average ratings.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: { companyId: { type: Type.INTEGER, description: 'The ID of the company' } },
+      required: ['companyId'],
+    },
+  };
+
+  // 3. الأداة الديناميكية السحرية: تنفيذ استعلام آمن (Read-Only SQL Execution)
+  private executeReadOnlyQueryTool: FunctionDeclaration = {
+    name: 'executeReadOnlyQuery',
+    description: 'Executes a raw, read-only SELECT SQL query on the database to answer custom, specific, complex or analytical questions that do not have dedicated functions. Strictly forbidden to run INSERT, UPDATE, DELETE, or DROP.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        sqlQuery: { type: Type.STRING, description: 'A valid MySQL SELECT query based on the system schema.' }
+      },
+      required: ['sqlQuery'],
+    },
+  };
+
+  // ═══════════════════════════════════════════════
+  // MAIN CHAT METHOD WITH FULL AGENT LOOP
   // ═══════════════════════════════════════════════
   async chat(
     userId: number,
@@ -36,141 +74,149 @@ export class ChatbotService {
       throw new BadRequestException('Message is required');
     }
 
-    // 1. بناء الـ Prompt المشترك (بيعمل Query للداتابيز حالا وبيدمجها بالـ UI)
-    const systemPrompt = await this.buildSystemPrompt(userId, role);
+    const systemPrompt = this.buildSystemPrompt(userId, role);
 
     try {
-      // 2. إرسال الطلب لجوجل بالـ SDK الحديث
-      const response = await this.ai.models.generateContent({
-        model: 'gemini-2.5-flash', 
+      // مصفوفة الـ Contents المشتركة لتنظيم المحادثة مع جمناي
+      const contentsArray: any[] = [
+        ...history.slice(-6).map(h => ({
+          role: h.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: h.content }]
+        })),
+        { role: 'user', parts: [{ text: message }] }
+      ];
+
+      // 1. الخطوة الأولى: إرسال السؤال والأدوات لموديل gemini-1.5-flash
+      let response = await this.ai.models.generateContent({
+        model: 'gemini-1.5-flash', // التحديث للموديل المستقر ذو الليميت المفتوح
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.3, // صارم جداً لضمان الالتزام بالتعليمات المكتوبة حرفياً وميلفش ويدور
-          maxOutputTokens: 1500, 
+          temperature: 0.1, // منخفضة جداً لضمان دقة وصرامة كتابة الـ SQL والتزام الموديل بالداتا
+          tools: [{
+            functionDeclarations: [
+              this.getWorkerProfileTool,
+              this.getCompanyStatsTool,
+              this.executeReadOnlyQueryTool
+            ]
+          }]
         },
-        contents: [
-          ...history.slice(-6).map(h => ({
-            role: h.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: h.content }]
-          })),
-          { role: 'user', parts: [{ text: message }] }
-        ]
+        contents: contentsArray
       });
 
-      const reply = response.text || 'لم يتم استلام رد من الذكاء الاصطناعي';
-      return { reply };
+      // 2. الخطوة الثانية: التحقق مما إذا كان جمناي طلب تشغيل أداة (Function Call)
+      let functionCalls = response.functionCalls;
 
-    } catch (err) {
-      console.error('Gemini SDK Error:', err);
-      return {
-        reply: 'حدث خطأ أثناء التواصل مع الذكاء الاصطناعي، يرجى المحاولة لاحقاً.',
+      if (functionCalls && functionCalls.length > 0) {
+        const call = functionCalls[0];
+        const { name } = call;
+        const args = call.args as Record<string, any> || {};
+        const callId = call.id; // سحب الـ ID الفرعي للـ Call لمنع مشاكل الـ Matching
+
+        let functionResult: any;
+
+        // تنفيذ الـ Routing البرمجي الفعلي بناءً على طلب جمناي لايف في الـ Backend
+        if (name === 'getWorkerProfile') {
+          functionResult = await this.workerRepo.findOne({
+            where: { id: Number(args.workerId || userId) },
+            relations: ['level']
+          });
+        } 
+        else if (name === 'getCompanyDashboardStats') {
+          functionResult = await this.executeCompanyStatsRaw(Number(args.companyId || userId));
+        } 
+        else if (name === 'executeReadOnlyQuery') {
+          functionResult = await this.handleReadOnlySql((args.sqlQuery as string) || '');
+        }
+
+        // 3. الخطوة الثالثة: إغلاق الـ Loop وإرسال النتيجة الحقيقية لموديل gemini-1.5-flash ليصيغ الرد النهائي
+        const finalResponse = await this.ai.models.generateContent({
+          model: 'gemini-1.5-flash', // التحديث للموديل المستقر ذو الليميت المفتوح
+          config: { systemInstruction: systemPrompt },
+          contents: [
+            ...contentsArray,
+            // تمرير طلب الموديل للـ Tool بالـ ID الفرعي له
+            {
+              role: 'model',
+              parts: [{ functionCall: { name, args, id: callId } }]
+            },
+            // تمرير النتيجة الفعلية المستخرجة من قاعدة البيانات فوراً
+            {
+              role: 'user', 
+              parts: [{ functionResponse: { name, response: { result: functionResult }, id: callId } }]
+            }
+          ]
+        });
+
+        return { reply: finalResponse.text || 'تفضل داتا الاستعلام المحدثة.' };
+      }
+
+      // إذا كان سؤال عام لا يحتاج لقاعدة البيانات، جمناي يرد مباشرة
+      return { reply: response.text || 'لم أتمكن من معالجة الرد.' };
+
+    } catch (err: any) {
+      console.error('Gemini Agent Full Loop Error:', err);
+      return { 
+        reply: `حدث خطأ في قاعدة البيانات الذكية. التفاصيل: ${err?.message || err}` 
       };
     }
   }
 
   // ═══════════════════════════════════════════════
-  // SYSTEM PROMPTS BUILDERS
+  // SECURITY CHECK & SQL EXECUTION (Read-Only Guard)
   // ═══════════════════════════════════════════════
+  private async handleReadOnlySql(query: string): Promise<any> {
+    const cleanQuery = query.trim().toUpperCase();
 
-  private async buildSystemPrompt(
-    userId: number,
-    role: UserRole,
-  ): Promise<string> {
-    const base = `أنت مساعد ذكي مدمج داخل منصة Tasqaya (تسكاية) لإدارة العمالة المؤقتة للفعاليات.
-رد دائماً بنفس اللغة التي يتحدث بها المستخدم واجعل الرد موجز ومختصر للغاية (Very concise).
-نسق الردود دائماً باستخدام الـ Markdown (مثل الخط العريض **Bold** والنقاط).
+    if (!cleanQuery) {
+      return { error: 'Empty query provided.' };
+    }
 
-🚨 تعليمات صارمة (STRICT DIRECTIVES):
-- إذا سألك المستخدم "هل عندي تاسكات؟" أو أي سؤال شبيه (Do I have tasks / jobs / events?)، يجب أن تبدأ ردك فوراً بذكر حالته العددية الحالية من الداتابيز المكتوبة في [CRITICAL DATA] (سواء كان عنده أو معندوش)، ثم بعد ذلك وجهه للـ UI المخصص. لا تذكر اسم الـ UI فقط أبداً كإجابة مستقلة!`;
+    // جدار حماية صارم يمنع الموديل تماماً من التعديل أو التخريب في الجداول
+    if (!cleanQuery.startsWith('SELECT')) {
+      return { error: 'Security Violation: Only SELECT queries are permitted.' };
+    }
+    if (cleanQuery.includes('DELETE') || cleanQuery.includes('DROP') || cleanQuery.includes('UPDATE') || cleanQuery.includes('ALTER') || cleanQuery.includes('INSERT')) {
+      return { error: 'Security Violation: Destructive operations detected.' };
+    }
 
-    switch (role) {
-      case UserRole.COMPANY:
-        return await this.buildCompanyPrompt(userId, base);
-
-      case UserRole.WORKER:
-        return await this.buildWorkerPrompt(userId, base);
-
-      case UserRole.SUPERVISOR:
-        return await this.buildSupervisorPrompt(userId, base);
-
-      case UserRole.ADMIN:
-        return `${base}\n\n[CRITICAL DATA]\nأنت تتحدث مع الـ Admin. وجهه لـ "لوحة التحكم الرئيسية (Admin Dashboard)".`;
-
-      default:
-        return base;
+    try {
+      // تنفيذ الـ SQL query المكتوب ديناميكياً من الموديل
+      return await this.dataSource.query(query);
+    } catch (dbError: any) {
+      return { error: `Database execution error: ${dbError.message}` };
     }
   }
 
-  // ── COMPANY PROMPT ────────────────────────────────────
-  private async buildCompanyPrompt(companyId: number, base: string): Promise<string> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
-    const tasks = await this.taskRepo.find({
-      where: { company: { id: companyId } },
-      order: { createdAt: 'DESC' },
-      take: 5,
-    });
+  // ميثود مساعدة لجلب إحصائيات الشركات بناءً على الـ Task Entity في مشروعك
+  private async executeCompanyStatsRaw(companyId: number) {
+    const taskStats = await this.taskRepo
+      .createQueryBuilder('task')
+      .select('task.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .where('task.companyId = :companyId', { companyId })
+      .groupBy('task.status')
+      .getRawMany();
 
-    const companyName = company?.name || 'Unknown';
-    
-    const tasksSummary = tasks.length > 0
-      ? `The user HAS active tasks in DB: [${tasks.map((t) => `${t.eventName} (${t.status})`).join(', ')}]. Tell them their tasks list, then state they can track them in **Company Dashboard Tab**.`
-      : `The user currently has ZERO (0) active tasks in the database. 
-         - If they ask in English, you MUST start your response exactly with: "You currently don't have any active tasks." and then guide them to the **Company Dashboard Tab** or click **'Create Task' button** to add one.
-         - إذا سألك بالعربية، ابدأ ردك بـ: "لا توجد لديك أي مهام نشطة حالياً." ثم وجهه لتبويب **لوحة التحكم** أو زر **إنشاء مهمة جديدة**.`;
-
-    return `${base}
-
-[CRITICAL DATA]
-- Current Company Name: "${companyName}"
-- Tasks Live Status: ${tasksSummary}
-- Financial Rules: For payments, guide them to the **Billing / Invoices Tab** (50% upfront, 50% post-event).`;
+    return { companyId, statsSummary: taskStats };
   }
 
-  // ── WORKER PROMPT (تم حل مشكلة الـ TypeORM والـ Relations بنجاح 🎯) ──
-  private async buildWorkerPrompt(workerId: number, base: string): Promise<string> {
-    const worker = await this.workerRepo.findOne({
-      where: { id: workerId },
-      relations: ['level'],
-    });
+  // ═══════════════════════════════════════════════
+  // INJECTING THE SCHEMA FOR TEXT-TO-SQL
+  // ═══════════════════════════════════════════════
+  private buildSystemPrompt(currentUserId: number, role: UserRole): string {
+    return `أنت "تسكاية الذكي (Tasqaya AI Agent)"، مساعد ذكي وصلاحيتك كاملة في مراجعة قاعدة البيانات ومساعدة المستخدمين.
+أنت تتحدث حالياً مع مستخدم برقم معرّف (ID) يساوي: ${currentUserId} ويملك رتبة: ${role}.
 
-    const workerName = worker?.fullName || 'Unknown';
-    const level = worker?.level?.levelName || 'Undefined';
-    const score = worker?.score || 0;
-    const reliability = worker?.reliabilityRate || 0;
+🚨 معلومات هيكل الجداول في قاعدة البيانات (Database Schema):
+1. جدول العمال (workers): يحتوي على الأعمدة (id, fullName, email, score, reliabilityRate, levelId, isActive).
+2. جدول مستويات العمال (worker_level): يحتوي على (id, levelName, minScore, companyHourlyRate, workerHourlyRate). حيث يمثل workerHourlyRate السعر الذي يحصل عليه العامل، و companyHourlyRate السعر الظاهر للشركة.
+3. جدول الشركات (companies): يحتوي على (id, name, email, isActive).
+4. جدول المهام (tasks): يحتوي على (id, eventName, location, startDate, endDate, requiredWorkers, totalCost, status, companyId).
 
-    // 🎯 استخدام الـ QueryBuilder لعمل Join صحيح ومضمون مع جدول الـ taskWorkers الوسيط
-    const tasks = await this.taskRepo.createQueryBuilder('task')
-      .leftJoin('task.taskWorkers', 'taskWorker')
-      .where('taskWorker.workerId = :workerId', { workerId })
-      .take(1)
-      .getMany();
-
-    const tasksSummary = tasks.length > 0 
-      ? `The worker HAS active jobs assigned in DB right now. Inform them and guide them to check their **Home / Tasks Dashboard** to see details.`
-      : `The database strictly shows ZERO (0) active tasks/jobs assigned to this worker right now. 
-         - If they ask in English (e.g., "i have tasks or not?"), you MUST start your response exactly with: "You currently don't have any assigned tasks." and then guide them to check the **Home / Tasks Dashboard** tab to apply for jobs.
-         - إذا سألك بالعربية، ابدأ ردك بـ: "معندكش أي مهام مسندة حالياً يا بطل." ثم وجهه لتبويب **الرئيسية / لوحة المهام** ليقدم على الشغل المتاح.`;
-
-    return `${base}
-
-[CRITICAL DATA]
-- Current Worker Name: "${workerName}"
-- Tasks Live Status: ${tasksSummary}
-- Level & Points Status: The worker has **${score} points**, **${reliability}% reliability rate**, and is at the **${level} level**. They can view this inside the **Profile Tab** / **ملفي الشخصي**.
-- Earnings: Guide them to the **Wallet / Earnings Tab** / **محفظتي واليوميات** to follow up on their daily payments.`;
-  }
-
-  // ── SUPERVISOR PROMPT ──────────────────────────────────
-  private async buildSupervisorPrompt(supervisorId: number, base: string): Promise<string> {
-    const supervisor = await this.supervisorRepo.findOne({ where: { id: supervisorId } });
-    const supervisorName = supervisor?.fullName || 'Unknown';
-
-    return `${base}
-
-[CRITICAL DATA]
-- Current Supervisor Name: "${supervisorName}"
-- Attendance Operations: Manage via the **Attendance Tab** (upload/download Excel sheets).
-- Active Events: Check the **Supervisor Dashboard** to see assigned events.
-- Communications: Guide them to **Coordination / WhatsApp Links** to fetch group links.`;
+💡 تعليمات التشغيل والاستجابة الحرة للـ Agent:
+- إذا سألك المستخدم سؤالاً عاماً أو تفصيلياً مخصصاً، ولم تجد دالة صريحة له، استخدم فوراً أداة 'executeReadOnlyQuery' لكتابة استعلام SQL والحصول على الداتا من الجداول الموضحة أعلاه.
+- عند استخدام الـ SQL، احرص دائماً على ربط الفلترة بـ id المستخدم الحالي (${currentUserId}) ورتبته لتجلب له البيانات الخاصة به فقط ولا تخلط داتا المستخدمين ببعضهم.
+- إذا سألك العامل عن سعره أو سعر المستويات، قم بعمل استعلام من جدول الـ worker_level واعرض له عمود الـ workerHourlyRate المتوافق مع فئته. لاعرض له أبداً الـ companyHourlyRate لأنها أسعار خاصة بالشركات فقط!
+- لا تطبع أبداً كود الـ SQL أو الـ Query لليوزر في الرد النهائي! صِغ الإجابة النهائية دائماً باللغة العربية بأسلوب بشري، احترافي وموجز، ونسق الردود باستخدام الـ Markdown بشكل منسق وجذاب.`;
   }
 }
