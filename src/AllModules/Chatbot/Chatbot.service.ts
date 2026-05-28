@@ -45,7 +45,7 @@ export class ChatbotService {
         model: 'gemini-2.5-flash', 
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.3, // 🎯 صارم جداً لضمان الالتزام بالتعليمات المكتوبة حرفياً
+          temperature: 0.3, // صارم جداً لضمان الالتزام بالتعليمات المكتوبة حرفياً وميلفش ويدور
           maxOutputTokens: 1500, 
         },
         contents: [
@@ -126,7 +126,7 @@ export class ChatbotService {
 - Financial Rules: For payments, guide them to the **Billing / Invoices Tab** (50% upfront, 50% post-event).`;
   }
 
-  // ── WORKER PROMPT (تم تصليح الـ Query والدمج باللغتين 🎯) ──
+  // ── WORKER PROMPT (تم حل مشكلة الـ TypeORM والـ Relations بنجاح 🎯) ──
   private async buildWorkerPrompt(workerId: number, base: string): Promise<string> {
     const worker = await this.workerRepo.findOne({
       where: { id: workerId },
@@ -138,11 +138,12 @@ export class ChatbotService {
     const score = worker?.score || 0;
     const reliability = worker?.reliabilityRate || 0;
 
-    // 🎯 تصليح الـ Query: يبحث في علاقة الـ workers اللي جوه الـ Task لتصفية مهام العامل الحالي بالملّي
-    const tasks = await this.taskRepo.find({
-      where: { workers: { id: workerId } }, 
-      take: 1
-    });
+    // 🎯 استخدام الـ QueryBuilder لعمل Join صحيح ومضمون مع جدول الـ taskWorkers الوسيط
+    const tasks = await this.taskRepo.createQueryBuilder('task')
+      .leftJoin('task.taskWorkers', 'taskWorker')
+      .where('taskWorker.workerId = :workerId', { workerId })
+      .take(1)
+      .getMany();
 
     const tasksSummary = tasks.length > 0 
       ? `The worker HAS active jobs assigned in DB right now. Inform them and guide them to check their **Home / Tasks Dashboard** to see details.`
