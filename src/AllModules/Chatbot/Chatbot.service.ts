@@ -1,8 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
 
 import { Worker } from '../../entities/Worker';
 import { Company } from '../../entities/Company';
@@ -10,14 +8,19 @@ import { Supervisor } from '../../entities/Supervisor';
 import { Task } from '../../entities/Task';
 import { UserRole } from '../../Enums/User.role';
 
+// 1. استيراد المكتبة الرسمية والأحدث من جوجل 🎯
+import { GoogleGenAI } from '@google/genai'; 
+
 @Injectable()
 export class ChatbotService {
+  // 2. تعريف الـ SDK بمفتاح الـ API بتاعك من الـ .env
+  private ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
   constructor(
     @InjectRepository(Worker)     private workerRepo:     Repository<Worker>,
     @InjectRepository(Company)    private companyRepo:    Repository<Company>,
     @InjectRepository(Supervisor) private supervisorRepo: Repository<Supervisor>,
     @InjectRepository(Task)       private taskRepo:       Repository<Task>,
-    private readonly httpService: HttpService,
   ) {}
 
   // ═══════════════════════════════════════════════
@@ -33,77 +36,44 @@ export class ChatbotService {
       throw new BadRequestException('Message is required');
     }
 
-    // 1. بناء الـ Prompt الديناميكي بناءً على الـ Role والـ Live Data
+    // 1. بناء الـ Prompt الديناميكي بناءً على الـ Role وبيانات الداتابيز الحالية
     const systemPrompt = await this.buildSystemPrompt(userId, role);
 
-    // 2. تحويل الـ History القديم لصيغة Gemini (آخر 6 رسائل فقط للحفاظ على الـ Tokens)
-    const formattedHistory = history.slice(-6).map((msg) => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
-    }));
-
-    // 3. بناء الـ contents بدمج الـ System Prompt في البداية للحفاظ على هوية البوت
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: `${systemPrompt}\n\nتاريخ المحادثة السابق (إن وجد) والرسائل القادمة مبنية على هذا السياق.` }],
-      },
-      ...formattedHistory,
-      {
-        role: 'user',
-        parts: [{ text: message }],
-      },
-    ];
-
     try {
-      // 4. استدعاء الـ Endpoint المستقر v1 لموديل gemini-1.5-flash
-      const response = await firstValueFrom(
-        this.httpService.post(
-         `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-          {
-            contents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 500,
-            },
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            timeout: 30000,
-          },
-        ),
-      );
+      // 2. إرسال الطلب لجوجل بالـ SDK الرسمي (يتولى الـ Endpoints والـ Versions تلقائياً)
+      const response = await this.ai.models.generateContent({
+        model: 'gemini-1.5-flash', // الموديل المجاني المستقر والأكثر أماناً في الكوتا
+        config: {
+          systemInstruction: systemPrompt, // حقن الـ Prompt هنا بشكل رسمي ونظيف لضمان عدم نسيان الهوية
+          temperature: 0.7,
+          maxOutputTokens: 500,
+        },
+        // تحويل الـ history للشكل الهندسي اللي الـ SDK بيفهمه (آخر 6 رسائل للحفاظ على الـ Tokens)
+        contents: [
+          ...history.slice(-6).map(h => ({
+            role: h.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: h.content }]
+          })),
+          { role: 'user', parts: [{ text: message }] }
+        ]
+      });
 
-      console.log(
-        'Gemini Response:',
-        JSON.stringify(response.data, null, 2),
-      );
-
-      const reply =
-        response?.data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-        'لم يتم استلام رد من الذكاء الاصطناعي';
-
+      // 3. استخراج الرد المباشر
+      const reply = response.text || 'لم يتم استلام رد من الذكاء الاصطناعي';
       return { reply };
 
     } catch (err) {
-      console.error(
-        'Gemini Error:',
-        JSON.stringify(err?.response?.data || err.message, null, 2),
-      );
-
+      console.error('Gemini SDK Error:', err);
       return {
         reply: 'حدث خطأ أثناء التواصل مع الذكاء الاصطناعي، يرجى المحاولة لاحقاً.',
-        // السطور دي سيبها مؤقتاً للتست عشان لو حصل حاجة تلقطها في Postman علطول
-        actual_error: err.message,
-        gemini_details: err?.response?.data || 'No response data'
+        // السطور دي للتست في بوست مان عشان لو حصل أي حاجة تلقطها علطول
+        actual_error: err.message || err,
       };
     }
   }
 
   // ═══════════════════════════════════════════════
-  // SYSTEM PROMPTS BUILDERS
+  // SYSTEM PROMPTS BUILDERS (الديناميكية بالكامل)
   // ═══════════════════════════════════════════════
 
   private async buildSystemPrompt(
@@ -117,12 +87,16 @@ export class ChatbotService {
     switch (role) {
       case UserRole.COMPANY:
         return await this.buildCompanyPrompt(userId, base);
+
       case UserRole.WORKER:
         return await this.buildWorkerPrompt(userId, base);
+
       case UserRole.SUPERVISOR:
         return await this.buildSupervisorPrompt(userId, base);
+
       case UserRole.ADMIN:
         return `${base}\n\nأنت تتحدث مع مدير النظام. ساعده في إدارة المنصة والمهام والمستخدمين بمستوى صلاحياته الكاملة.`;
+
       default:
         return base;
     }
