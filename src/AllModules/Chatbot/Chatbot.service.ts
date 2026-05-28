@@ -42,7 +42,7 @@ export class ChatbotService {
     try {
       // 2. إرسال الطلب لجوجل بالـ SDK الرسمي (يتولى الـ Endpoints والـ Versions تلقائياً)
       const response = await this.ai.models.generateContent({
-        model: 'gemini-1.5-flash', // الموديل المجاني المستقر والأكثر أماناً في الكوتا
+        model: 'gemini-2.5-flash', // الموديل المجاني المستقر والأكثر أماناً في الكوتا
         config: {
           systemInstruction: systemPrompt, // حقن الـ Prompt هنا بشكل رسمي ونظيف لضمان عدم نسيان الهوية
           temperature: 0.7,
