@@ -46,7 +46,7 @@ export class ChatbotService {
         this.httpService.post(
           'https://openrouter.ai/api/v1/chat/completions',
           {
-            model: 'google/gemma-2-9b-it:free',
+            model: 'google/gemini-2.5-flash:free',
             messages,
             max_tokens: 500,
             temperature: 0.7,
