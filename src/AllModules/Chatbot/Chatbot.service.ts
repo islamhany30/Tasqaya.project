@@ -66,8 +66,7 @@ export class ChatbotService {
       console.error('Gemini SDK Error:', err);
       return {
         reply: 'حدث خطأ أثناء التواصل مع الذكاء الاصطناعي، يرجى المحاولة لاحقاً.',
-        // السطور دي للتست في بوست مان عشان لو حصل أي حاجة تلقطها علطول
-        actual_error: err.message || err,
+
       };
     }
   }
