@@ -45,7 +45,7 @@ export class ChatbotService {
         model: 'gemini-2.5-flash', 
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.7,
+          temperature: 0.3, // 🎯 صارم جداً لضمان الالتزام بالتعليمات المكتوبة حرفياً
           maxOutputTokens: 1500, 
         },
         contents: [
@@ -79,7 +79,9 @@ export class ChatbotService {
     const base = `أنت مساعد ذكي مدمج داخل منصة Tasqaya (تسكاية) لإدارة العمالة المؤقتة للفعاليات.
 رد دائماً بنفس اللغة التي يتحدث بها المستخدم واجعل الرد موجز ومختصر للغاية (Very concise).
 نسق الردود دائماً باستخدام الـ Markdown (مثل الخط العريض **Bold** والنقاط).
-استند فقط على النص المكتوب في قسم [CRITICAL CONTEXT] بالأسفل للرد على حالة المستخدم ولا تخترع أرقاماً أو تنحاز لإجابات عامة.`;
+
+🚨 تعليمات صارمة (STRICT DIRECTIVES):
+- إذا سألك المستخدم "هل عندي تاسكات؟" أو أي سؤال شبيه (Do I have tasks / jobs / events?)، يجب أن تبدأ ردك فوراً بذكر حالته العددية الحالية من الداتابيز المكتوبة في [CRITICAL DATA] (سواء كان عنده أو معندوش)، ثم بعد ذلك وجهه للـ UI المخصص. لا تذكر اسم الـ UI فقط أبداً كإجابة مستقلة!`;
 
     switch (role) {
       case UserRole.COMPANY:
@@ -92,14 +94,14 @@ export class ChatbotService {
         return await this.buildSupervisorPrompt(userId, base);
 
       case UserRole.ADMIN:
-        return `${base}\n\n[CRITICAL CONTEXT]\nأنت تتحدث مع الـ Admin. وجهه لـ "لوحة التحكم الرئيسية (Admin Dashboard)".`;
+        return `${base}\n\n[CRITICAL DATA]\nأنت تتحدث مع الـ Admin. وجهه لـ "لوحة التحكم الرئيسية (Admin Dashboard)".`;
 
       default:
         return base;
     }
   }
 
-  // ── COMPANY PROMPT (الدمج الإجباري هنا 🎯) ─────────────────
+  // ── COMPANY PROMPT ────────────────────────────────────
   private async buildCompanyPrompt(companyId: number, base: string): Promise<string> {
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     const tasks = await this.taskRepo.find({
@@ -110,20 +112,21 @@ export class ChatbotService {
 
     const companyName = company?.name || 'Unknown';
     
-    // سطر واحد مدمج يربط حالة الداتا الحقيقية بالـ UI اللحظي غصب عن الموديل
     const tasksSummary = tasks.length > 0
-      ? `The database shows these active tasks: [${tasks.map((t) => `${t.eventName} (${t.status})`).join(', ')}]. Mention them to the user and tell them they can view their full live details in their **Company Dashboard Tab**.`
-      : `The database strictly shows **0 active tasks** (No tasks recorded) for this company right now. You MUST explicitly tell them they currently have no tasks, and guide them to check the **Company Dashboard Tab** or click the **'Create Task' button** to launch one.`;
+      ? `The user HAS active tasks in DB: [${tasks.map((t) => `${t.eventName} (${t.status})`).join(', ')}]. Tell them their tasks list, then state they can track them in **Company Dashboard Tab**.`
+      : `The user currently has ZERO (0) active tasks in the database. 
+         - If they ask in English, you MUST start your response exactly with: "You currently don't have any active tasks." and then guide them to the **Company Dashboard Tab** or click **'Create Task' button** to add one.
+         - إذا سألك بالعربية، ابدأ ردك بـ: "لا توجد لديك أي مهام نشطة حالياً." ثم وجهه لتبويب **لوحة التحكم** أو زر **إنشاء مهمة جديدة**.`;
 
     return `${base}
 
-[CRITICAL CONTEXT]
+[CRITICAL DATA]
 - Current Company Name: "${companyName}"
-- Database & UI Status: ${tasksSummary}
+- Tasks Live Status: ${tasksSummary}
 - Financial Rules: For payments, guide them to the **Billing / Invoices Tab** (50% upfront, 50% post-event).`;
   }
 
-  // ── WORKER PROMPT (الدمج الإجباري هنا 🎯) ──────────────────
+  // ── WORKER PROMPT (تم تصليح الـ Query والدمج باللغتين 🎯) ──
   private async buildWorkerPrompt(workerId: number, base: string): Promise<string> {
     const worker = await this.workerRepo.findOne({
       where: { id: workerId },
@@ -135,13 +138,25 @@ export class ChatbotService {
     const score = worker?.score || 0;
     const reliability = worker?.reliabilityRate || 0;
 
+    // 🎯 تصليح الـ Query: يبحث في علاقة الـ workers اللي جوه الـ Task لتصفية مهام العامل الحالي بالملّي
+    const tasks = await this.taskRepo.find({
+      where: { workers: { id: workerId } }, 
+      take: 1
+    });
+
+    const tasksSummary = tasks.length > 0 
+      ? `The worker HAS active jobs assigned in DB right now. Inform them and guide them to check their **Home / Tasks Dashboard** to see details.`
+      : `The database strictly shows ZERO (0) active tasks/jobs assigned to this worker right now. 
+         - If they ask in English (e.g., "i have tasks or not?"), you MUST start your response exactly with: "You currently don't have any assigned tasks." and then guide them to check the **Home / Tasks Dashboard** tab to apply for jobs.
+         - إذا سألك بالعربية، ابدأ ردك بـ: "معندكش أي مهام مسندة حالياً يا بطل." ثم وجهه لتبويب **الرئيسية / لوحة المهام** ليقدم على الشغل المتاح.`;
+
     return `${base}
 
-[CRITICAL CONTEXT]
+[CRITICAL DATA]
 - Current Worker Name: "${workerName}"
-- Level & Points Status: The worker currently has **${score} points**, **${reliability}% reliability rate**, and is at the **${level} level**. You MUST tell them these exact numbers from DB and inform them they can track them inside their **Profile Tab**.
-- Job Applications: Guide them to the **Home / Tasks Dashboard** tab to browse and apply for available tasks.
-- Earnings: Guide them to the **Wallet / Earnings Tab** to follow up on their daily payments.`;
+- Tasks Live Status: ${tasksSummary}
+- Level & Points Status: The worker has **${score} points**, **${reliability}% reliability rate**, and is at the **${level} level**. They can view this inside the **Profile Tab** / **ملفي الشخصي**.
+- Earnings: Guide them to the **Wallet / Earnings Tab** / **محفظتي واليوميات** to follow up on their daily payments.`;
   }
 
   // ── SUPERVISOR PROMPT ──────────────────────────────────
@@ -151,10 +166,10 @@ export class ChatbotService {
 
     return `${base}
 
-[CRITICAL CONTEXT]
+[CRITICAL DATA]
 - Current Supervisor Name: "${supervisorName}"
-- Attendance Operations: Tell them to manage worker schedules and check-ins via the **Attendance Tab** (where they can upload/download Excel sheets).
-- Active Events: Tell them to check the **Supervisor Dashboard** to see assigned events.
+- Attendance Operations: Manage via the **Attendance Tab** (upload/download Excel sheets).
+- Active Events: Check the **Supervisor Dashboard** to see assigned events.
 - Communications: Guide them to **Coordination / WhatsApp Links** to fetch group links.`;
   }
 }
