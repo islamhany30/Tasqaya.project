@@ -11,7 +11,7 @@ import { GoogleGenAI, Type, FunctionDeclaration } from '@google/genai';
 
 @Injectable()
 export class ChatbotService {
-  // تعريف الـ SDK بالـ API KEY الخاص بك
+  // تعريف الـ SDK بمفتاح الـ API الخاص بك من ملف الـ .env
   private ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
   constructor(
@@ -19,14 +19,14 @@ export class ChatbotService {
     @InjectRepository(Company)    private companyRepo:    Repository<Company>,
     @InjectRepository(Supervisor) private supervisorRepo: Repository<Supervisor>,
     @InjectRepository(Task)       private taskRepo:       Repository<Task>,
-    private dataSource: DataSource, // بنحتاجه عشان الـ Raw SQL Queries الآمنة
+    private dataSource: DataSource, // لتنفيذ استعلامات الـ SQL الديناميكية بأمان
   ) {}
 
   // ═══════════════════════════════════════════════
   // DEFINING TOOLS (FUNCTIONS DECLARATIONS)
   // ═══════════════════════════════════════════════
   
-  // 1. أداة جلب بروفايل العامل
+  // 1. أداة جلب بروفايل العامل الحالي
   private getWorkerProfileTool: FunctionDeclaration = {
     name: 'getWorkerProfile',
     description: 'Fetches the complete profile details of the currently logged-in worker, including their score, reliability rate, and level.',
@@ -48,7 +48,7 @@ export class ChatbotService {
     },
   };
 
-  // 3. الأداة السحرية: تنفيذ استعلام ديناميكي آمن (Read-Only SQL Execution)
+  // 3. الأداة الديناميكية السحرية: تنفيذ استعلام آمن (Read-Only SQL Execution)
   private executeReadOnlyQueryTool: FunctionDeclaration = {
     name: 'executeReadOnlyQuery',
     description: 'Executes a raw, read-only SELECT SQL query on the database to answer custom, specific, complex or analytical questions that do not have dedicated functions. Strictly forbidden to run INSERT, UPDATE, DELETE, or DROP.',
@@ -62,7 +62,7 @@ export class ChatbotService {
   };
 
   // ═══════════════════════════════════════════════
-  // MAIN CHAT METHOD WITH TOOL LOOP
+  // MAIN CHAT METHOD WITH FULL AGENT LOOP
   // ═══════════════════════════════════════════════
   async chat(
     userId: number,
@@ -77,12 +77,21 @@ export class ChatbotService {
     const systemPrompt = this.buildSystemPrompt(userId, role);
 
     try {
-      // إرسال الطلب لجمناي مع توفير الأدوات (Tools)
-      const response = await this.ai.models.generateContent({
+      // مصفوفة الـ Contents المشتركة لتنظيم المحادثة مع جمناي
+      const contentsArray: any[] = [
+        ...history.slice(-6).map(h => ({
+          role: h.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: h.content }]
+        })),
+        { role: 'user', parts: [{ text: message }] }
+      ];
+
+      // 1. الخطوة الأولى: إرسال السؤال والأدوات لجمناي لمعرفة قراره
+      let response = await this.ai.models.generateContent({
         model: 'gemini-2.5-flash',
         config: {
           systemInstruction: systemPrompt,
-          temperature: 0.2, // تقليل الـ temperature لضمان دقة كتابة الـ SQL والالتزام بالفانكشنز
+          temperature: 0.1, // منخفضة جداً لضمان دقة وصرامة كتابة الـ SQL والتزام الموديل بالداتا
           tools: [{
             functionDeclarations: [
               this.getWorkerProfileTool,
@@ -91,53 +100,48 @@ export class ChatbotService {
             ]
           }]
         },
-        contents: [
-          ...history.slice(-6).map(h => ({
-            role: h.role === 'assistant' ? 'model' : 'user',
-            parts: [{ text: h.content }]
-          })),
-          { role: 'user', parts: [{ text: message }] }
-        ]
+        contents: contentsArray
       });
 
-      // التحقق مما إذا كان جمناي يريد استدعاء دالة (Function Call)
-      const functionCalls = response.functionCalls;
+      // 2. الخطوة الثانية: التحقق مما إذا كان جمناي طلب تشغيل أداة (Function Call)
+      let functionCalls = response.functionCalls;
 
       if (functionCalls && functionCalls.length > 0) {
         const call = functionCalls[0];
         const { name } = call;
-        
-        // 🎯 تأمين الـ args والتأكد من أنها ليست undefined لمنع إيرور الـ TS
         const args = call.args as Record<string, any> || {};
+        
         let functionResult: any;
 
-        // 🔀 الـ Routing الذكي بناءً على قرار جمناي
+        // تنفيذ الـ Routing البرمجي الفعلي بناءً على طلب جمناي لايف في الـ Backend
         if (name === 'getWorkerProfile') {
           functionResult = await this.workerRepo.findOne({
-            where: { id: Number(args.workerId) },
+            where: { id: Number(args.workerId || userId) },
             relations: ['level']
           });
         } 
         else if (name === 'getCompanyDashboardStats') {
-          functionResult = await this.executeCompanyStatsRaw(Number(args.companyId));
+          functionResult = await this.executeCompanyStatsRaw(Number(args.companyId || userId));
         } 
         else if (name === 'executeReadOnlyQuery') {
           functionResult = await this.handleReadOnlySql((args.sqlQuery as string) || '');
         }
 
-        // إرسال نتيجة الدالة لجمناي ليصيغ الرد البشري النهائي
+        // 3. الخطوة الثالثة: إغلاق الـ Loop وتمرير الطلب مع النتيجة لجمناي ليصيغ الرد النهائي لليوزر
         const finalResponse = await this.ai.models.generateContent({
           model: 'gemini-2.5-flash',
           config: { systemInstruction: systemPrompt },
           contents: [
-            ...history.slice(-6).map(h => ({
-              role: h.role === 'assistant' ? 'model' : 'user',
-              parts: [{ text: h.content }]
-            })),
-            { role: 'user', parts: [{ text: message }] },
+            ...contentsArray,
+            // تمرير طلب الموديل للـ Tool بالـ ID الفرعي له
             {
               role: 'model',
-              parts: [{ functionResponse: { name, response: { result: functionResult } } }]
+              parts: [{ functionCall: { name, args, id: call.id } }]
+            },
+            // تمرير النتيجة الفعلية المستخرجة من قاعدة البيانات فوراً
+            {
+              role: 'user', 
+              parts: [{ functionResponse: { name, response: { result: functionResult }, id: call.id } }]
             }
           ]
         });
@@ -145,11 +149,11 @@ export class ChatbotService {
         return { reply: finalResponse.text || 'تفضل داتا الاستعلام المحدثة.' };
       }
 
-      // لو اليوزر سأل سؤال عام وجوابه مش محتاج داتابيز (جمناي هيرد مباشرة)
+      // إذا كان سؤال عام لا يحتاج لقاعدة البيانات، جمناي يرد مباشرة
       return { reply: response.text || 'لم أتمكن من معالجة الرد.' };
 
     } catch (err) {
-      console.error('Gemini Agent Error:', err);
+      console.error('Gemini Agent Full Loop Error:', err);
       return { reply: 'حدث خطأ غير متوقع أثناء الاتصال بقاعدة البيانات الذكية.' };
     }
   }
@@ -164,7 +168,7 @@ export class ChatbotService {
       return { error: 'Empty query provided.' };
     }
 
-    // جدار حماية صارم لمنع أي محاولة تعديل أو تخريب في الداتا بيز
+    // جدار حماية صارم يمنع الموديل تماماً من التعديل أو التخريب في الجداول
     if (!cleanQuery.startsWith('SELECT')) {
       return { error: 'Security Violation: Only SELECT queries are permitted.' };
     }
@@ -173,14 +177,14 @@ export class ChatbotService {
     }
 
     try {
-      // تنفيذ الاستعلام على الداتابيز مباشرة
+      // تنفيذ الـ SQL query المكتوب ديناميكياً من الموديل
       return await this.dataSource.query(query);
     } catch (dbError: any) {
       return { error: `Database execution error: ${dbError.message}` };
     }
   }
 
-  // ميثود مساعدة لجلب إحصائيات الشركات بناءً على الكود الفعلي للسيرفس عندك
+  // ميثود مساعدة لجلب إحصائيات الشركات بناءً على الـ Task Entity في مشروعك
   private async executeCompanyStatsRaw(companyId: number) {
     const taskStats = await this.taskRepo
       .createQueryBuilder('task')
@@ -206,10 +210,10 @@ export class ChatbotService {
 3. جدول الشركات (companies): يحتوي على (id, name, email, isActive).
 4. جدول المهام (tasks): يحتوي على (id, eventName, location, startDate, endDate, requiredWorkers, totalCost, status, companyId).
 
-💡 تعليمات التشغيل والاستجابة الحرة:
+💡 تعليمات التشغيل والاستجابة الحرة للـ Agent:
 - إذا سألك المستخدم سؤالاً عاماً أو تفصيلياً مخصصاً، ولم تجد دالة صريحة له، استخدم فوراً أداة 'executeReadOnlyQuery' لكتابة استعلام SQL والحصول على الداتا من الجداول الموضحة أعلاه.
-- عند استخدام الـ SQL، احرص دائماً على ربط الفلترة بـ id المستخدم الحالي (${currentUserId}) ورتبته لتجلب له البيانات الخاصة به فقط.
-- إذا سألك العامل عن سعره أو سعر المستويات، قم بعمل استعلام من جدول الـ worker_level واعرض له عمود الـ workerHourlyRate المتوافق مع فئته.
-- صِغ الإجابات النهائية باللغة العربية بأسلوب احترافي وموجز، ونسق الردود باستخدام الـ Markdown بشكل منسق وجذاب.`;
+- عند استخدام الـ SQL، احرص دائماً على ربط الفلترة بـ id المستخدم الحالي (${currentUserId}) ورتبته لتجلب له البيانات الخاصة به فقط ولا تخلط داتا المستخدمين ببعضهم.
+- إذا سألك العامل عن سعره أو سعر المستويات، قم بعمل استعلام من جدول الـ worker_level واعرض له عمود الـ workerHourlyRate المتوافق مع فئته. لا تعرض له أبداً الـ companyHourlyRate لأنها أسعار خاصة بالشركات فقط!
+- لا تطبع أبداً كود الـ SQL أو الـ Query لليوزر في الرد النهائي! صِغ الإجابة النهائية دائماً باللغة العربية بأسلوب بشري، احترافي وموجز، ونسق الردود باستخدام الـ Markdown بشكل منسق وجذاب.`;
   }
 }
