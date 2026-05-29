@@ -380,10 +380,19 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
     if (!worker.isActive) throw new BadRequestException('Worker account is deactivated');
 
     // Validate jobPost exists
-    const jobPost = await this.jobPostRepository.findOne({
-      where: { id: dto.jobPostId },
-      relations: ['task', 'task.workerLevel'],
-    });
+    // const jobPost = await this.jobPostRepository.findOne({
+    //   where: { id: dto.jobPostId },
+    //   relations: ['task', 'task.workerLevel'],
+    // });
+
+      // Validate jobPost exists with proper QueryBuilder for nested relations
+    const jobPost = await this.jobPostRepository
+      .createQueryBuilder('jp')
+      .leftJoinAndSelect('jp.task', 'task')
+      .leftJoinAndSelect('task.workerLevel', 'workerLevel')
+      .where('jp.id = :jobPostId', { jobPostId: dto.jobPostId })
+      .getOne();
+
 
     if (!jobPost) throw new NotFoundException('Job post not found');
 
