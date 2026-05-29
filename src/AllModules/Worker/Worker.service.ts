@@ -462,10 +462,19 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
     await this.applicationRepository.save(application);
 
     // Return application with job details
-    const savedApp = await this.applicationRepository.findOne({
-      where: { id: application.id },
-      relations: ['jobPost', 'jobPost.task', 'jobPost.task.workerLevel'],
-    });
+    // const savedApp = await this.applicationRepository.findOne({
+    //   where: { id: application.id },
+    //   relations: ['jobPost', 'jobPost.task', 'jobPost.task.workerLevel'],
+    // });
+
+    const savedApp = await this.applicationRepository
+      .createQueryBuilder('app')
+      .leftJoinAndSelect('app.jobPost', 'jobPost')
+      .leftJoinAndSelect('jobPost.task', 'task')
+      .leftJoinAndSelect('task.workerLevel', 'workerLevel')
+      .leftJoinAndSelect('app.worker', 'worker')
+      .where('app.id = :appId', { appId: application.id })
+      .getOne();
 
     if (!savedApp) throw new NotFoundException('Failed to retrieve created application');
 
