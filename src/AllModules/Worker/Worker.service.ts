@@ -395,7 +395,8 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
 
 
     if (!jobPost) throw new NotFoundException('Job post not found');
-
+    if (!jobPost.task) throw new NotFoundException('Task not found for this job post');
+    if (!jobPost.task.workerLevel) throw new NotFoundException('Worker level not found for this task');
     // Check jobPost status and deadline
     if (jobPost.status !== JobPostStatusEnum.OPEN) {
       throw new BadRequestException('This job post is no longer open for applications');
