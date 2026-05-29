@@ -13,6 +13,8 @@ import { Worker } from 'src/entities/Worker';
 import { JobPost } from 'src/entities/JobPost';
 import { Application } from 'src/entities/Application';
 import { Task } from 'src/entities/Task';
+import { WorkerLevel } from 'src/entities/WorkerLevel';
+import { WorkerLevelEnum } from 'src/Enums/worker-level.enum';
 import { CreateWorkerDto } from './Dto/CreateWorker.dto';
 import { UpdateWorkerDto } from './Dto/UpdateWorker.dto';
 import { PaginationDto } from './Dto/PaginationDto';
