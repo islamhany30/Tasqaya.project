@@ -477,6 +477,9 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
       .getOne();
 
     if (!savedApp) throw new NotFoundException('Failed to retrieve created application');
+    if (!savedApp.jobPost?.task?.workerLevel) {
+      throw new BadRequestException('Job post configuration is incomplete');
+    }
 
     const taskGenders = Array.isArray(savedApp.jobPost.task.genders)
       ? savedApp.jobPost.task.genders
