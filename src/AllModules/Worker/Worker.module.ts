@@ -19,7 +19,7 @@ import { CloudinaryModule } from 'src/Cloudinary/cloudinary.module';
     AuthModule,
     TaskModule,
     CloudinaryModule,
-    TypeOrmModule.forFeature([Worker, Admin, Task, Company, JobPost, Application]),
+    TypeOrmModule.forFeature([Worker, Admin, Task, Company, JobPost, Application, WorkerLevel]),
   ],
   controllers: [WorkerController],
   providers: [WorkerService],
