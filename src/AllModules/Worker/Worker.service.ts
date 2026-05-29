@@ -530,16 +530,33 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
     });
 
     // Fetch applications with pagination
-    const applications = await this.applicationRepository.find({
-      where: { worker: { id: workerId } },
-      relations: ['jobPost', 'jobPost.task', 'jobPost.task.workerLevel'],
-      order: { appliedAt: 'DESC' },
-      skip: pagination.offset,
-      take: pagination.limit,
-    });
+    // const applications = await this.applicationRepository.find({
+    //   where: { worker: { id: workerId } },
+    //   relations: ['jobPost', 'jobPost.task', 'jobPost.task.workerLevel'],
+    //   order: { appliedAt: 'DESC' },
+    //   skip: pagination.offset,
+    //   take: pagination.limit,
+    // });
+
+     const applications = await this.applicationRepository
+      .createQueryBuilder('app')
+      .leftJoinAndSelect('app.jobPost', 'jobPost')
+      .leftJoinAndSelect('jobPost.task', 'task')
+      .leftJoinAndSelect('task.workerLevel', 'workerLevel')
+      .leftJoinAndSelect('app.worker', 'worker')
+      .where('app.workerId = :workerId', { workerId })
+      .orderBy('app.appliedAt', 'DESC')
+      .skip(pagination.offset)
+      .take(pagination.limit)
+      .getMany();
 
     // Transform to response format, why? Because we
     const appResponses = applications.map((app) => {
+      if (!app.jobPost?.task?.workerLevel) {
+        console.warn(`Incomplete data for application ${app.id}`);
+        return null;
+      }
+
       const taskGenders = Array.isArray(app.jobPost.task.genders)
         ? app.jobPost.task.genders
         : app.jobPost.task.genders
@@ -571,7 +588,9 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
           genders: taskGenders,
         },
       };
-    });
+    })
+    }) .filter(app => app !== null);;
+  //----------------------------------------------
 
     const totalPages = Math.ceil(total / pagination.limit);
 
