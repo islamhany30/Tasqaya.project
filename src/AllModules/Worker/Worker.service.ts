@@ -589,7 +589,6 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
         },
       };
     })
-    }) .filter(app => app !== null);;
   //----------------------------------------------
 
     const totalPages = Math.ceil(total / pagination.limit);
