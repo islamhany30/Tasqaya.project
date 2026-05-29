@@ -414,6 +414,9 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
     if (existingApp) throw new BadRequestException("You've already applied for this job");
 
     // Validate worker level matches
+    if (!worker.level) {
+      throw new BadRequestException('Your worker account has no level assigned');
+    }
     if (worker.level.id !== jobPost.task.workerLevel.id) {
       throw new BadRequestException('Your worker level does not match the job requirements');
     }
