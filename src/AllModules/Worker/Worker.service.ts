@@ -56,7 +56,18 @@ export class WorkerService implements IAuthUser {
 async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
   const repo = manager ? manager.getRepository(Worker) : this.workerRepository;
 
-  const worker = repo.create(data);
+  // ── Assign default BRONZE level to new workers ──────────────────────────
+  const levelRepo = manager
+    ? manager.getRepository(WorkerLevel)
+    : this.workerRepository.manager.getRepository(WorkerLevel);
+
+  const bronzeLevel = await levelRepo.findOne({
+    where: { levelName: WorkerLevelEnum.BRONZE },
+  });
+
+  if (!bronzeLevel) throw new BadRequestException('Default worker level not found. Please seed the WorkerLevel table.');
+
+  const worker = repo.create({ ...data, level: bronzeLevel });
   return await repo.save(worker);
 }
 
