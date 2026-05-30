@@ -5,6 +5,7 @@ import { TaskModule } from '../Task/Task.module';
 import { Company } from '../../entities/Company';
 import { Admin } from '../../entities/Admin';
 import { Task } from '../../entities/Task';
+import { WorkerLevel } from '../../entities/WorkerLevel';
 import { AuthModule } from 'src/Auth/Auth.module';
 import { Worker } from 'src/entities/Worker';
 import { JobPost } from 'src/entities/JobPost';
