@@ -214,12 +214,22 @@ async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req:
     return await this.paymentService.getCompanyInvoiceDetails(paymentId, companyId);
   }
 
-  @Post('payments/:paymentId/pay')
-  @UseGuards(JwtAccountAuthGuard)
-  async payInvoice(@Param('paymentId', ParseIntPipe) paymentId: number, @Body() body: PayInvoiceDto, @Req() req) {
-    const companyId = req.user.sub;
-    return await this.paymentService.initiatePayment(paymentId, companyId, body.method);
-  }
+ @Post('payments/:paymentId/pay')
+@UseGuards(JwtAccountAuthGuard)
+async payInvoice(
+  @Param('paymentId', ParseIntPipe) paymentId: number,
+  @Body() body: PayInvoiceDto,
+  @Req() req,
+) {
+  const companyId = req.user.sub;
+
+  return await this.paymentService.initiatePayment(
+    paymentId,
+    companyId,
+    body.method,
+    body.step,
+  );
+}
 
   // ─────────────────────────────────────────────
   // FEEDBACK
