@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards, Res } from '@nestjs/common';
-import { Response } from 'express'; // ده اللي بيخلينا نتحكم في الـ Redirect
+import type { Response } from 'express';
 import { PaymentService } from './Payment.service';
 import { PayInvoiceDto } from './Dto/PayInvoiceDto';
 import { JwtAccountAuthGuard } from 'src/Auth/auth.guards.account';
