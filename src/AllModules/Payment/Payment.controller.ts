@@ -17,7 +17,7 @@ export class PaymentController {
     const transactionId = query.id;
     
     // التقاط رسالة الخطأ من Paymob إذا فشلت العملية
-    const errorMessage = query['data.message'] || 'حدث خطأ غير معروف أثناء الدفع';
+    const errorMessage = query['data.message'] || 'Error';
 
     // الرابط الأساسي لصفحة الدفع في الفرونت إيند
     const baseUrl = 'https://tasqaya-connect.netlify.app/company/payments';
