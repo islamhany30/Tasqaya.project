@@ -20,11 +20,11 @@ export class PaymentController {
     // 2. الـ Redirect للموقع بتاعك
     if (isSuccess) {
       // بيرجع المستخدم لصفحة النجاح في الفرونت إيند
-      return res.redirect(`https://tasqaya.com/payment-success?transactionId=${transactionId}`);
+      return res.redirect(`https://tasqaya-connect.netlify.app/company/payments`);
     } else {
       // بيرجع المستخدم لصفحة الفشل
       const errorMessage = query['data.message'] || 'Payment failed';
-      return res.redirect(`https://tasqaya.com/payment-failed?message=${encodeURIComponent(errorMessage)}`);
+      return res.redirect(`https://tasqaya-connect.netlify.app/company/payments`);
     }
   }
 
