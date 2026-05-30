@@ -82,11 +82,11 @@ export class TaskService {
     const endDate = new Date(dto.endDate);
     const today = new Date();
 
-    const minStartDate = new Date();
-    minStartDate.setDate(today.getDate() + 7);
-    if (startDate < minStartDate) {
-      throw new BadRequestException('StartDate must be at least 7 days from today');
-    }
+    // const minStartDate = new Date();
+    // minStartDate.setDate(today.getDate() + 7);
+    // if (startDate < minStartDate) {
+    //   throw new BadRequestException('StartDate must be at least 7 days from today');
+    // }
 
     if (endDate < startDate) {
       throw new BadRequestException('EndDate cannot be earlier than StartDate');
@@ -178,13 +178,13 @@ export class TaskService {
 
     if (!task) throw new NotFoundException('Task not found');
 
-    const today = new Date();
-    const startDate = new Date(task.startDate);
-    const diffInDays = (startDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+    // const today = new Date();
+    // const startDate = new Date(task.startDate);
+    // const diffInDays = (startDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
 
-    if (diffInDays < 7) {
-      throw new BadRequestException('Cannot approve task; approval must be at least 7 days before the start date');
-    }
+    // if (diffInDays < 7) {
+    //   throw new BadRequestException('Cannot approve task; approval must be at least 7 days before the start date');
+    // }
 
     task.approvalStatus = TaskApprovalStatusEnum.APPROVED;
     task.status = TaskStatusEnum.PENDING;
