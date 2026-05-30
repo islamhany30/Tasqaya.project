@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express'; // ده اللي بيخلينا نتحكم في الـ Redirect
 import { PaymentService } from './Payment.service';
 import { PayInvoiceDto } from './Dto/PayInvoiceDto';
 import { JwtAccountAuthGuard } from 'src/Auth/auth.guards.account';
@@ -8,23 +9,22 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Get('success')
-  handlePaymentResponse(@Query() query: any) {
-    // 1. تأكد من نجاح العملية من خلال الـ query
+  async handlePaymentResponse(
+    @Query() query: any, 
+    @Res() res: Response // إضافة الـ Response للتحكم في الـ Redirect
+  ) {
+    // 1. التأكد من نجاح العملية من الـ Query اللي راجعة من Paymob
     const isSuccess = query.success === 'true';
+    const transactionId = query.id;
 
-    // 2. هنا اعرض النتيجة للمستخدم فقط
+    // 2. الـ Redirect للموقع بتاعك
     if (isSuccess) {
-      return {
-        message: 'Payment response received',
-        status: 'success',
-        transactionId: query.id,
-      };
+      // بيرجع المستخدم لصفحة النجاح في الفرونت إيند
+      return res.redirect(`https://tasqaya.com/payment-success?transactionId=${transactionId}`);
     } else {
-      return {
-        message: 'Payment failed',
-        status: 'failed',
-        reason: query['data.message'],
-      };
+      // بيرجع المستخدم لصفحة الفشل
+      const errorMessage = query['data.message'] || 'Payment failed';
+      return res.redirect(`https://tasqaya.com/payment-failed?message=${encodeURIComponent(errorMessage)}`);
     }
   }
 
