@@ -344,7 +344,7 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
 
     // Transform results to JobListResponseDto format
     // Note: getRawMany returns raw database results, so we need to map them to our desired format
-    const jobs = jobPosts.map((jp) => ({
+      const jobs = jobPosts.map((jp) => ({
       id: jp.jp_id,
       eventName: jp.task_eventName,
       location: jp.task_location,
@@ -355,6 +355,10 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
       status: jp.jp_status,
       deadline: jp.jp_deadline,
       publishedAt: jp.jp_publishedAt,
+      // --- أضف الأسطر دي هنا ---
+      hasUniform: !!jp.task_hasUniform, // التحويل لـ boolean
+      uniformDescription: jp.task_hasUniform ? jp.task_uniformDescription : null,
+      // ------------------------
       workerLevel: {
         id: jp.level_id,
         levelName: jp.level_levelName,
@@ -364,6 +368,7 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
       workersApplied: parseInt(jp.applicationsCount) || 0,
       hasUserApplied: !!jp.app_id,
     }));
+
 
     const totalPages = Math.ceil(total / query.limit); //
 
