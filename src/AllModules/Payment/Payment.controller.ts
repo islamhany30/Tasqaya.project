@@ -11,20 +11,23 @@ export class PaymentController {
   @Get('success')
   async handlePaymentResponse(
     @Query() query: any, 
-    @Res() res: Response // إضافة الـ Response للتحكم في الـ Redirect
+    @Res() res: Response
   ) {
-    // 1. التأكد من نجاح العملية من الـ Query اللي راجعة من Paymob
     const isSuccess = query.success === 'true';
     const transactionId = query.id;
+    
+    // التقاط رسالة الخطأ من Paymob إذا فشلت العملية
+    const errorMessage = query['data.message'] || 'حدث خطأ غير معروف أثناء الدفع';
 
-    // 2. الـ Redirect للموقع بتاعك
+    // الرابط الأساسي لصفحة الدفع في الفرونت إيند
+    const baseUrl = 'https://tasqaya-connect.netlify.app/company/payments';
+    
     if (isSuccess) {
-      // بيرجع المستخدم لصفحة النجاح في الفرونت إيند
-      return res.redirect(`https://tasqaya-connect.netlify.app/company/payments`);
+      // تمرير حالة النجاح ورقم العملية للفرونت إيند
+      return res.redirect(`${baseUrl}?status=success&id=${transactionId}`);
     } else {
-      // بيرجع المستخدم لصفحة الفشل
-      const errorMessage = query['data.message'] || 'Payment failed';
-      return res.redirect(`https://tasqaya-connect.netlify.app/company/payments`);
+      // تمرير حالة الفشل ورسالة الخطأ (مع تشفيرها لتكون آمنة في الرابط)
+      return res.redirect(`${baseUrl}?status=failed&message=${encodeURIComponent(errorMessage)}`);
     }
   }
 
