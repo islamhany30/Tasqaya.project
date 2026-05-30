@@ -14,6 +14,10 @@ export class Worker {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ length: 255})
+  address: string;
+
+
   @Column({ length: 150 })
   fullName: string;
 
