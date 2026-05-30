@@ -420,9 +420,9 @@ async createUser(data: Partial<Worker>, manager?: EntityManager): Promise<any> {
       throw new BadRequestException('This job post is no longer open for applications');
     }
 
-    if (jobPost.deadline < new Date()) {
-      throw new BadRequestException('The application deadline for this job has passed');
-    }
+    // if (jobPost.deadline < new Date()) {
+    //   throw new BadRequestException('The application deadline for this job has passed');
+    // }
 
     // Check for duplicate application
     const existingApp = await this.applicationRepository.findOne({
