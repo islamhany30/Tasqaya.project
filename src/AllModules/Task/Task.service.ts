@@ -88,9 +88,9 @@ export class TaskService {
     //   throw new BadRequestException('StartDate must be at least 7 days from today');
     // }
 
-    if (endDate < startDate) {
-      throw new BadRequestException('EndDate cannot be earlier than StartDate');
-    }
+    // if (endDate < startDate) {
+    //   throw new BadRequestException('EndDate cannot be earlier than StartDate');
+    // }
 
     const levelData = await this.levelRepo.findOne({ where: { levelName: dto.workerLevel } });
     if (!levelData) {
