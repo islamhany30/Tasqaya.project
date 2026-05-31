@@ -210,4 +210,4 @@ async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req:
     return this.adminService.completeTaskForDemo(taskId);
   }
 }
-}
+
