@@ -20,7 +20,7 @@ import { Worker } from 'src/entities/Worker';
 @Injectable()
 export class ConfirmationTokenService {
   private readonly logger = new Logger(ConfirmationTokenService.name);
-  private readonly TOKEN_EXPIRY_HOURS = 0.5;
+  private readonly TOKEN_EXPIRY_HOURS = 8;
   private readonly baseUrl = process.env.APP_BASE_URL || 'https://tasqaya-project-1.onrender.com';
 
 
