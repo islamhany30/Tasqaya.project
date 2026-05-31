@@ -175,4 +175,39 @@ async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req:
   async getDashboardStats() {
     return this.adminService.getAdminDashboardStats();
   }
+
+    // ================= Demo & Manual Trigger Endpoints =================
+
+  @UseGuards(AdminAuthGuard)
+  @Post('manage/job-posts/:jobPostId/filter')
+  async filterJobPost(
+    @Param('jobPostId', ParseIntPipe) jobPostId: number,
+  ) {
+    return this.adminService.filterJobPostForDemo(jobPostId);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Post('demo/trigger-confirmation/:taskId')
+  async triggerConfirmationEmails(
+    @Param('taskId', ParseIntPipe) taskId: number,
+  ) {
+    return this.adminService.triggerConfirmationForDemo(taskId);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Post('demo/start-task/:taskId')
+  async startTaskNow(
+    @Param('taskId', ParseIntPipe) taskId: number,
+  ) {
+    return this.adminService.startTaskForDemo(taskId);
+  }
+
+  @UseGuards(AdminAuthGuard)
+  @Post('demo/complete-task/:taskId')
+  async completeTaskNow(
+    @Param('taskId', ParseIntPipe) taskId: number,
+  ) {
+    return this.adminService.completeTaskForDemo(taskId);
+  }
+}
 }
