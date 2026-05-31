@@ -3,12 +3,12 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { MailModule } from '../../Mail/Mail.module';
 import { Admin } from '../../entities/Admin';
 import { Company } from '../../entities/Company';
-import { Task } from '../../entities/Task';           // ← جديد
-import { TaskWorker } from '../../entities/TaskWorker'; // ← جديد
+import { Task } from '../../entities/Task';
+import { TaskWorker } from '../../entities/TaskWorker';
+import { ConfirmationToken } from '../../entities/confirmationToken';   // ← أضف ده
 
 import { AdminController } from './Admin.controller';
 import { AdminService } from './Admin.service';
-
 import { CompanyModule } from '../Company/Company.module';
 import { AuthModule } from 'src/Auth/Auth.module';
 import { SupervisorModule } from '../Supervisor/Supervisor.module';
@@ -16,7 +16,7 @@ import { WorkerModule } from '../Worker/Worker.module';
 import { TaskModule } from '../Task/Task.module';
 import { CloudinaryModule } from 'src/Cloudinary/cloudinary.module';
 
-// 🔥 New Import
+// Confirmation Service
 import { ConfirmationTokenService } from '../Confirmation/Confirmation-token.service';
 
 @Module({
@@ -30,16 +30,17 @@ import { ConfirmationTokenService } from '../Confirmation/Confirmation-token.ser
     TaskModule,
 
     TypeOrmModule.forFeature([
-      Admin, 
+      Admin,
       Company,
-      Task,           // ← جديد
-      TaskWorker      // ← جديد
+      Task,
+      TaskWorker,
+      ConfirmationToken,        // ← مهم جداً
     ]),
   ],
   controllers: [AdminController],
   providers: [
     AdminService,
-    ConfirmationTokenService,   // ← جديد
+    ConfirmationTokenService,   // ← موجود
   ],
   exports: [AdminService],
 })
