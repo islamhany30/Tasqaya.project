@@ -136,7 +136,7 @@ export class ConfirmationTokenService {
           <p>Please confirm:</p>
           <a href="${yesUrl}" style="background:green;color:white;padding:12px;text-decoration:none;margin-right:10px;">YES, I ACCEPT</a>
           <a href="${noUrl}" style="background:red;color:white;padding:12px;text-decoration:none;">NO, I DECLINE</a>
-          <p style="color:red;margin-top:20px;">You must respond within 12 hours.</p>
+          <p style="color:red;margin-top:20px;">You must respond within 8 hours.</p>
         </div>
       `,
     });
