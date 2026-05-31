@@ -15,7 +15,14 @@ import { WorkerService } from '../Worker/Worker.service';
 import { GetTasksFilterDto } from '../Task/Dto/GetTasksFilter.dto';
 import { TaskService } from '../Task/Task.service';
 import { CloudinaryService } from 'src/Cloudinary/cloudinary.service';
-
+// new
+import { Task } from '../../entities/Task';
+import { TaskWorker } from '../../entities/TaskWorker';
+import { AssignmentTypeEnum } from '../../Enums/assignment-type.enum';
+import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.enum';
+import { TaskStatusEnum } from '../../Enums/task-status.enum';
+import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
+import { ConfirmationTokenService } from '../Confirmation/Confirmation-token.service';
 @Injectable()
 export class AdminService implements IAuthUser {
   constructor(
@@ -26,7 +33,14 @@ export class AdminService implements IAuthUser {
     private readonly supervisorService: SupervisorService,
     private readonly workerService: WorkerService,
     private readonly taskService: TaskService,
-    private readonly cloudinaryService:CloudinaryService
+    private readonly cloudinaryService:CloudinaryService,
+    @InjectRepository(Task)
+    private readonly taskRepo: Repository<Task>,
+
+    @InjectRepository(TaskWorker)
+    private readonly taskWorkerRepo: Repository<TaskWorker>,
+
+    private readonly confirmationTokenService: ConfirmationTokenService,
   ) {}
 
   //IAuthUser Implementation (called by AuthService)
@@ -251,5 +265,80 @@ export class AdminService implements IAuthUser {
 
   async getAdminDashboardStats(): Promise<any> {
     return this.taskService.getAdminDashboardStats();
+  }
+
+    // ================= DEMO & MANUAL TRIGGER ENDPOINTS =================
+
+  async filterJobPostForDemo(jobPostId: number) {
+    return this.taskService.filterJobPostWorkers(jobPostId);
+  }
+
+  async triggerConfirmationForDemo(taskId: number) {
+    const task = await this.taskRepo.findOne({
+      where: { id: taskId },
+      relations: ['taskWorkers', 'taskWorkers.worker'],
+    });
+
+    if (!task) throw new NotFoundException('Task not found');
+
+    const primaryWorkers = await this.taskWorkerRepo.find({
+      where: {
+        task: { id: taskId },
+        assignmentType: AssignmentTypeEnum.PRIMARY,
+        confirmationStatus: WorkerConfirmationStatusEnum.PENDING,
+      },
+      relations: ['worker', 'task'],
+    });
+
+    if (primaryWorkers.length === 0) {
+      throw new BadRequestException('No primary pending workers found for this task');
+    }
+
+    for (const tw of primaryWorkers) {
+      await this.confirmationTokenService.issueTokenAndNotify(tw);
+    }
+
+    return {
+      message: `✅ Confirmation emails sent to ${primaryWorkers.length} primary workers`,
+      taskId,
+      count: primaryWorkers.length,
+    };
+  }
+
+  async startTaskForDemo(taskId: number) {
+    const task = await this.taskRepo.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+
+    if (task.status === TaskStatusEnum.IN_PROGRESS) {
+      throw new BadRequestException('Task is already in progress');
+    }
+
+    task.status = TaskStatusEnum.IN_PROGRESS;
+    await this.taskRepo.save(task);
+
+    return {
+      message: '🚀 Task started successfully (Demo)',
+      taskId,
+      newStatus: task.status,
+    };
+  }
+
+  async completeTaskForDemo(taskId: number) {
+    const task = await this.taskRepo.findOne({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Task not found');
+
+    if (task.status === TaskStatusEnum.COMPLETED) {
+      throw new BadRequestException('Task is already completed');
+    }
+
+    task.status = TaskStatusEnum.COMPLETED;
+    task.requiredWorkerStatus = requiredWorkersStatusEnum.COMPLETED;
+    await this.taskRepo.save(task);
+
+    return {
+      message: '✅ Task completed successfully (Demo)',
+      taskId,
+      newStatus: task.status,
+    };
   }
 }
