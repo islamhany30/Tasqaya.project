@@ -294,10 +294,10 @@ export class TaskService {
     if (dto.startDate) {
       const newStartDate = new Date(dto.startDate);
       const minAllowedDate = new Date();
-      minAllowedDate.setDate(today.getDate() + 7);
+      minAllowedDate.setDate(today.getDate() + 5);
 
       if (newStartDate < minAllowedDate) {
-        throw new BadRequestException('The start date must be at least 7 days from now');
+        throw new BadRequestException('The start date must be at least 5 days from now');
       }
     } else {
       const currentStartDate = new Date(task.startDate);
