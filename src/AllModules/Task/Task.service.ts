@@ -83,9 +83,9 @@ export class TaskService {
     const today = new Date();
 
     const minStartDate = new Date();
-    minStartDate.setDate(today.getDate() + 7);
+    minStartDate.setDate(today.getDate() + 5);
     if (startDate < minStartDate) {
-      throw new BadRequestException('StartDate must be at least 7 days from today');
+      throw new BadRequestException('StartDate must be at least 5 days from today');
     }
 
     if (endDate < startDate) {
@@ -182,8 +182,8 @@ export class TaskService {
     const startDate = new Date(task.startDate);
     const diffInDays = (startDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
 
-    if (diffInDays < 7) {
-      throw new BadRequestException('Cannot approve task; approval must be at least 7 days before the start date');
+    if (diffInDays < 5) {
+      throw new BadRequestException('Cannot approve task; approval must be at least 5 days before the start date');
     }
 
     task.approvalStatus = TaskApprovalStatusEnum.APPROVED;
