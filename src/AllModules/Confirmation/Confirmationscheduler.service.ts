@@ -17,7 +17,7 @@ export class ConfirmationSchedulerService {
   private readonly logger = new Logger(ConfirmationSchedulerService.name);
 
   // private readonly HOURS_BEFORE_EVENT = 48;
-    private readonly HOURS_BEFORE_EVENT = 1;
+    private readonly HOURS_BEFORE_EVENT = 48;
   private readonly SCAN_WINDOW_MINUTES = 60;
 
   constructor(
