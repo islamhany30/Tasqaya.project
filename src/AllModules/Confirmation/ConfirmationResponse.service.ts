@@ -37,6 +37,12 @@ export class ConfirmationResponseService {
       relations: ['Worker', 'Task'],
     });
 
+      console.log('========== TOKEN DEBUG ==========');
+  console.log(token);
+  console.log('IsUsed =', token?.IsUsed);
+  console.log('Type =', typeof token?.IsUsed);
+  console.log('================================');
+
     if (!token) throw new NotFoundException(`Token "${tokenValue}" not found`);
     if (token.IsUsed) throw new BadRequestException(`Token "${tokenValue}" has already been used`);
     if (token.ExpiresAt < new Date()) throw new BadRequestException(`Token "${tokenValue}" has expired`);
