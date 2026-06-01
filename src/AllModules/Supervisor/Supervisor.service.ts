@@ -252,10 +252,10 @@ export class SupervisorService implements IAuthUser {
     const taskEnd = new Date(assignment.task.endDate);
     taskEnd.setHours(0, 0, 0, 0);
 
-    // 2. التأكد إن اليوم ده جوا فترة التاسك
-     if (today < taskStart || today > taskEnd) {
-      throw new BadRequestException('Cannot upload attendance outside the task period');
-     }
+    // // 2. التأكد إن اليوم ده جوا فترة التاسك
+    //  if (today < taskStart || today > taskEnd) {
+    //   throw new BadRequestException('Cannot upload attendance outside the task period');
+    //  }
 
     const dateOnly = today.toISOString().split('T')[0]; // "2026-03-07"
 
