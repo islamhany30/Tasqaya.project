@@ -431,84 +431,252 @@ export class SupervisorService implements IAuthUser {
     return { count: tasks.length, tasks };
   }
 
-  async getAttendanceTemplate(supervisorId: number, taskId: number): Promise<{ buffer: Buffer; fileName: string }> {
-    // 1. التأكد إن الـ supervisor assigned على التاسك دي
-    const assignment = await this.taskSupervisorRepo.findOne({
+  async getAttendanceTemplate(
+  supervisorId: number,
+  taskId: number,
+): Promise<{ buffer: Buffer; fileName: string }> {
+  // ==================================================
+  // Validate Supervisor Assignment
+  // ==================================================
+
+  const assignment = await this.taskSupervisorRepo.findOne({
+    where: {
+      task: { id: taskId },
+      supervisor: { id: supervisorId },
+    },
+    relations: ['task'],
+  });
+
+  if (!assignment) {
+    throw new NotFoundException(
+      'You are not assigned as a supervisor for this task',
+    );
+  }
+
+  // ==================================================
+  // Validate Workers Confirmation
+  // ==================================================
+
+  const confirmedWorkers =
+    await this.taskWorkerRepo.find({
       where: {
         task: { id: taskId },
-        supervisor: { id: supervisorId },
-      },
-      relations: ['task'],
-    });
-
-    if (!assignment) {
-      throw new NotFoundException('You are not assigned as a supervisor for this task');
-    }
-
-    // 2. جيب العمال الـ confirmed في التاسك دي
-    const confirmedWorkers = await this.taskWorkerRepo.find({
-      where: {
-        task: { id: taskId },
-        confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+        confirmationStatus:
+          WorkerConfirmationStatusEnum.CONFIRMED,
       },
       relations: ['worker'],
     });
 
-    if (confirmedWorkers.length === 0) {
-      throw new BadRequestException(
-        'No confirmed workers yet for this task — attendance template is not available until workers confirm their attendance',
-      );
-    }
+  if (confirmedWorkers.length === 0) {
+    throw new BadRequestException(
+      'No confirmed workers yet for this task — template not available',
+    );
+  }
 
-    // 3. بناء الـ rows
-    const rows = confirmedWorkers.map((tw) => ({
+  // ==================================================
+  // Create Workbook
+  // ==================================================
+
+  const workbook = new ExcelJS.Workbook();
+
+  workbook.creator = 'Tasqaya System';
+  workbook.created = new Date();
+
+  const worksheet = workbook.addWorksheet(
+    'Attendance',
+    {
+      views: [
+        {
+          state: 'frozen',
+          ySplit: 1,
+        },
+      ],
+    },
+  );
+
+  // ==================================================
+  // Columns
+  // ==================================================
+
+  worksheet.columns = [
+    {
+      header: 'workerId',
+      key: 'workerId',
+      width: 15,
+      hidden: true,
+    },
+    {
+      header: 'workerName',
+      key: 'workerName',
+      width: 30,
+    },
+    {
+      header: 'checkIn',
+      key: 'checkIn',
+      width: 15,
+    },
+    {
+      header: 'checkOut',
+      key: 'checkOut',
+      width: 15,
+    },
+    {
+      header: 'status',
+      key: 'status',
+      width: 20,
+    },
+  ];
+
+  // ==================================================
+  // Header Style
+  // ==================================================
+
+  const headerRow = worksheet.getRow(1);
+
+  headerRow.font = {
+    bold: true,
+    size: 12,
+  };
+
+  headerRow.alignment = {
+    vertical: 'middle',
+    horizontal: 'center',
+  };
+
+  headerRow.height = 22;
+
+  headerRow.eachCell((cell) => {
+    cell.border = {
+      top: { style: 'thin' },
+      left: { style: 'thin' },
+      bottom: { style: 'thin' },
+      right: { style: 'thin' },
+    };
+  });
+
+  // ==================================================
+  // Add Workers
+  // ==================================================
+
+  confirmedWorkers.forEach((tw) => {
+    worksheet.addRow({
       workerId: tw.worker.id,
       workerName: tw.worker.fullName,
       checkIn: '',
       checkOut: '',
       status: '',
-    }));
-
-    // 4. بناء الـ worksheet
-    const worksheet = XLSX.utils.json_to_sheet(rows, {
-      header: ['workerId', 'workerName', 'checkIn', 'checkOut', 'status'],
     });
+  });
 
-    // تعريض الأعمدة
-    worksheet['!cols'] = [
-      { wch: 12 }, // workerId
-      { wch: 25 }, // workerName
-      { wch: 12 }, // checkIn   — format: HH:mm  e.g. 08:00
-      { wch: 12 }, // checkOut  — format: HH:mm  e.g. 16:00
-      { wch: 15 }, // status    — PRESENT or ABSENT
-    ];
+  // ==================================================
+  // Auto Filter
+  // ==================================================
 
-    // تثبيت الـ header row
-    worksheet['!freeze'] = { xSplit: 0, ySplit: 1 } as any;
+  worksheet.autoFilter = {
+    from: 'A1',
+    to: 'E1',
+  };
 
-    // تعليقات توضيحية على الـ headers
-    if (!worksheet['A1'].c) worksheet['A1'].c = [];
-    worksheet['A1'].c.push({ a: 'System', t: 'Do not modify workerId' });
+  // ==================================================
+  // Notes
+  // ==================================================
 
-    if (!worksheet['B1'].c) worksheet['B1'].c = [];
-    worksheet['B1'].c.push({ a: 'System', t: 'Do not modify workerName' });
+  worksheet.getCell('A1').note =
+    'Internal worker identifier. Do not modify.';
 
-    if (!worksheet['C1'].c) worksheet['C1'].c = [];
-    worksheet['C1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 08:00' });
+  worksheet.getCell('B1').note =
+    'Worker full name (read-only).';
 
-    if (!worksheet['D1'].c) worksheet['D1'].c = [];
-    worksheet['D1'].c.push({ a: 'System', t: 'Time format: HH:mm — e.g. 16:00' });
+  worksheet.getCell('C1').note =
+    'Check-in time (HH:mm e.g. 08:00).';
 
-    if (!worksheet['E1'].c) worksheet['E1'].c = [];
-    worksheet['E1'].c.push({ a: 'System', t: 'Allowed values: PRESENT or ABSENT only' });
+  worksheet.getCell('D1').note =
+    'Check-out time (HH:mm e.g. 17:00).';
 
-    // 5. بناء الـ workbook
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    const fileName = `attendance_task_${taskId}_${new Date().toISOString().split('T')[0]}.xlsx`;
-    return { buffer, fileName };
+  worksheet.getCell('E1').note =
+    'Allowed values: PRESENT or ABSENT only.';
+
+  // ==================================================
+  // Protection + Validation
+  // ==================================================
+
+  for (
+    let row = 2;
+    row <= worksheet.rowCount;
+    row++
+  ) {
+    // lock IDs + names
+    worksheet.getCell(`A${row}`).protection = {
+      locked: true,
+    };
+
+    worksheet.getCell(`B${row}`).protection = {
+      locked: true,
+    };
+
+    // unlock editable fields
+    worksheet.getCell(`C${row}`).protection = {
+      locked: false,
+    };
+
+    worksheet.getCell(`D${row}`).protection = {
+      locked: false,
+    };
+
+    worksheet.getCell(`E${row}`).protection = {
+      locked: false,
+    };
+
+    // dropdown status
+    worksheet.getCell(`E${row}`).dataValidation = {
+      type: 'list',
+      allowBlank: false,
+      formulae: ['"PRESENT,ABSENT"'],
+      showErrorMessage: true,
+      errorTitle: 'Invalid Status',
+      error: 'Choose PRESENT or ABSENT only',
+    };
   }
+
+  // ==================================================
+  // Protect Sheet
+  // ==================================================
+
+  await worksheet.protect(
+    process.env.EXCEL_PROTECTION_PASSWORD ||
+      'Tasqaya@2026',
+    {
+      selectLockedCells: true,
+      selectUnlockedCells: true,
+      autoFilter: true,
+      formatCells: false,
+      formatColumns: false,
+      formatRows: false,
+      insertColumns: false,
+      insertRows: false,
+      deleteColumns: false,
+      deleteRows: false,
+      sort: false,
+    },
+  );
+
+  // ==================================================
+  // Generate File
+  // ==================================================
+
+  const buffer = Buffer.from(
+    await workbook.xlsx.writeBuffer(),
+  );
+
+  const fileName = `attendance_task_${taskId}_${
+    new Date().toISOString().split('T')[0]
+  }.xlsx`;
+
+  return {
+    buffer,
+    fileName,
+  };
+}
 
   async getTaskDetailsForSupervisor(taskId: number, supervisorId: number) {
     const assignment = await this.taskSupervisorRepo.findOne({
