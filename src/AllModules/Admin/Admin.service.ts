@@ -23,6 +23,10 @@ import { WorkerConfirmationStatusEnum } from '../../Enums/worker-confirmation.en
 import { TaskStatusEnum } from '../../Enums/task-status.enum';
 import { requiredWorkersStatusEnum } from '../../Enums/required-workers.enum';
 import { ConfirmationTokenService } from '../Confirmation/Confirmation-token.service';
+import { Attendance } from '../../entities/Attendance';
+import { Worker } from '../../entities/Worker';
+import { WorkerLevel } from '../../entities/WorkerLevel';
+import { AttendanceStatusEnum } from '../../Enums/attendance-status.enum';
 @Injectable()
 export class AdminService implements IAuthUser {
   constructor(
@@ -39,6 +43,9 @@ export class AdminService implements IAuthUser {
 
     @InjectRepository(TaskWorker)
     private readonly taskWorkerRepo: Repository<TaskWorker>,
+    @InjectRepository(Attendance) private readonly attendanceRepo: Repository<Attendance>,
+  @InjectRepository(Worker) private readonly workerRepo: Repository<Worker>,
+  @InjectRepository(WorkerLevel) private readonly workerLevelRepo: Repository<WorkerLevel>,
 
     private readonly confirmationTokenService: ConfirmationTokenService,
   ) {}
@@ -334,6 +341,7 @@ export class AdminService implements IAuthUser {
     task.status = TaskStatusEnum.COMPLETED;
     task.requiredWorkerStatus = requiredWorkersStatusEnum.COMPLETED;
     await this.taskRepo.save(task);
+    await this.updateWorkersPerformanceForTask(task);
 
     return {
       message: '✅ Task completed successfully (Demo)',
@@ -341,4 +349,39 @@ export class AdminService implements IAuthUser {
       newStatus: task.status,
     };
   }
+  async updateWorkersPerformanceForTask(task: Task) {
+    const taskWorkers = await this.taskWorkerRepo.find({
+      where: { task: { id: task.id }, confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED },
+      relations: ['worker', 'worker.level'],
+    });
+
+    const allLevels = await this.workerLevelRepo.find({ order: { minScore: 'ASC' } });
+
+    for (const tw of taskWorkers) {
+      const worker = tw.worker;
+      const presentDays = await this.attendanceRepo.count({
+        where: { taskId: task.id, workerId: worker.id, status: AttendanceStatusEnum.PRESENT }
+      });
+
+      const taskStart = new Date(task.startDate);
+      const taskEnd = new Date(task.endDate);
+      const totalDays = Math.ceil((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const currentTaskRate = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
+      
+      const allAbsent = presentDays === 0 && totalDays > 0;
+      const scoreChange = allAbsent ? -5 : 5;
+      const newScore = Math.max(0, (worker.score || 0) + scoreChange);
+      
+      const newLevel = allLevels.filter(l => l.minScore !== null && newScore >= l.minScore)
+                                .sort((a, b) => b.minScore - a.minScore)[0] || worker.level;
+
+      await this.workerRepo.update(worker.id, {
+        reliabilityRate: Math.min(parseFloat(currentTaskRate.toFixed(2)), 99.99),
+        completedTasks: (worker.completedTasks || 0) + 1,
+        score: newScore,
+        level: newLevel,
+      });
+    }
+  }
 }
+
