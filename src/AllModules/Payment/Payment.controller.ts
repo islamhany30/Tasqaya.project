@@ -20,7 +20,7 @@ export class PaymentController {
     const errorMessage = query['data.message'] || 'Error';
 
     // الرابط الأساسي لصفحة الدفع في الفرونت إيند
-    const baseUrl = 'https://tasqaya-connect.netlify.app/company/payments';
+    const baseUrl = 'https://tasqaya-connect.vercel.app/company/payments';
     
     if (isSuccess) {
       // تمرير حالة النجاح ورقم العملية للفرونت إيند
