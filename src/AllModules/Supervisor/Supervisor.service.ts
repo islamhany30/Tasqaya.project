@@ -378,11 +378,37 @@ export class SupervisorService implements IAuthUser {
     };
   }
 
-  async getMyTasks(supervisorId: number, status?: TaskStatusEnum): Promise<any> {
+  // async getMyTasks(supervisorId: number, status?: TaskStatusEnum): Promise<any> {
+  //   const assignments = await this.taskSupervisorRepo.find({
+  //     where: {
+  //       supervisor: { id: supervisorId },
+  //       ...(status && { task: { status } }),
+  //     },
+  //     relations: ['task', 'task.workerLevel'],
+  //     order: { task: { startDate: 'ASC' } },
+  //   });
+
+  //   const tasks = assignments.map((a) => ({
+  //     id: a.task.id,
+  //     eventName: a.task.eventName,
+  //     location: a.task.location,
+  //     startDate: a.task.startDate,
+  //     endDate: a.task.endDate,
+  //     status: a.task.status,
+  //     requiredWorkers: a.task.requiredWorkers,
+  //     durationHoursPerDay: a.task.durationHoursPerDay,
+  //     workerLevel: a.task.workerLevel?.levelName,
+  //     supervisorBonus: a.supervisorBonus,
+  //     whatsAppGroupLink: a.whatsAppGroupLink,
+  //   }));
+
+  //   return { count: tasks.length, tasks };
+  // }
+
+  async getMyTasks(supervisorId: number): Promise<any> {
     const assignments = await this.taskSupervisorRepo.find({
       where: {
         supervisor: { id: supervisorId },
-        ...(status && { task: { status } }),
       },
       relations: ['task', 'task.workerLevel'],
       order: { task: { startDate: 'ASC' } },
