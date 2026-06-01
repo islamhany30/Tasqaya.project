@@ -152,10 +152,16 @@ async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req:
     return this.supervisorService.getDashboard(Number(req.user.sub));
   }
 
+  // @Get('tasks')
+  // @UseGuards(JwtAccountAuthGuard)
+  // async getMyTasks(@Req() req: any, @Query('status') status?: TaskStatusEnum) {
+  //   return this.supervisorService.getMyTasks(Number(req.user.sub), status);
+  // }
+
   @Get('tasks')
   @UseGuards(JwtAccountAuthGuard)
-  async getMyTasks(@Req() req: any, @Query('status') status?: TaskStatusEnum) {
-    return this.supervisorService.getMyTasks(Number(req.user.sub), status);
+  async getMyTasks(@Req() req: any) {
+    return this.supervisorService.getMyTasks(Number(req.user.sub));
   }
   
   @Get('tasks/:taskId/attendance-template')
