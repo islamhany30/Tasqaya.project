@@ -350,38 +350,51 @@ export class AdminService implements IAuthUser {
     };
   }
   async updateWorkersPerformanceForTask(task: Task) {
-    const taskWorkers = await this.taskWorkerRepo.find({
-      where: { task: { id: task.id }, confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED },
-      relations: ['worker', 'worker.level'],
+  // 1. جلب العمال المرتبطين بالمهمة (تأكد أن relations تشمل 'worker')
+  const taskWorkers = await this.taskWorkerRepo.find({
+    where: { 
+      task: { id: task.id }, 
+      confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED 
+    },
+    relations: ['worker', 'worker.level'],
+  });
+
+  const allLevels = await this.workerLevelRepo.find({ order: { minScore: 'ASC' } });
+
+  // 2. البدء في الحساب لكل عامل
+  for (const tw of taskWorkers) {
+    const worker = tw.worker;
+
+    // 3. حساب الحضور لهذا العامل في هذه المهمة تحديداً
+    const presentDays = await this.attendanceRepo.count({
+      where: { 
+        task: { id: task.id }, 
+        worker: { id: worker.id }, 
+        status: AttendanceStatusEnum.PRESENT 
+      }
     });
 
-    const allLevels = await this.workerLevelRepo.find({ order: { minScore: 'ASC' } });
+    // 4. الحسابات المالية والتقييمية
+    const taskStart = new Date(task.startDate);
+    const taskEnd = new Date(task.endDate);
+    const totalDays = Math.ceil((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const currentTaskRate = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
+    
+    const allAbsent = presentDays === 0 && totalDays > 0;
+    const scoreChange = allAbsent ? -5 : 5;
+    const newScore = Math.max(0, (worker.score || 0) + scoreChange);
+    
+    const newLevel = allLevels.filter(l => l.minScore !== null && newScore >= l.minScore)
+                              .sort((a, b) => b.minScore - a.minScore)[0] || worker.level;
 
-    for (const tw of taskWorkers) {
-      const worker = tw.worker;
-      const presentDays = await this.attendanceRepo.count({
-        where: { taskId: task.id, workerId: worker.id, status: AttendanceStatusEnum.PRESENT }
-      });
-
-      const taskStart = new Date(task.startDate);
-      const taskEnd = new Date(task.endDate);
-      const totalDays = Math.ceil((taskEnd.getTime() - taskStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-      const currentTaskRate = totalDays > 0 ? (presentDays / totalDays) * 100 : 0;
-      
-      const allAbsent = presentDays === 0 && totalDays > 0;
-      const scoreChange = allAbsent ? -5 : 5;
-      const newScore = Math.max(0, (worker.score || 0) + scoreChange);
-      
-      const newLevel = allLevels.filter(l => l.minScore !== null && newScore >= l.minScore)
-                                .sort((a, b) => b.minScore - a.minScore)[0] || worker.level;
-
-      await this.workerRepo.update(worker.id, {
-        reliabilityRate: Math.min(parseFloat(currentTaskRate.toFixed(2)), 99.99),
-        completedTasks: (worker.completedTasks || 0) + 1,
-        score: newScore,
-        level: newLevel,
-      });
-    }
+    // 5. حفظ التحديثات في قاعدة البيانات
+    await this.workerRepo.update(worker.id, {
+      reliabilityRate: Math.min(parseFloat(currentTaskRate.toFixed(2)), 99.99),
+      completedTasks: (worker.completedTasks || 0) + 1,
+      score: newScore,
+      level: newLevel,
+    });
   }
+}
 }
 
