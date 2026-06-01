@@ -44,7 +44,7 @@ export class ConfirmationResponseService {
   console.log('================================');
 
     if (!token) throw new NotFoundException(`Token "${tokenValue}" not found`);
-    if (token.IsUsed) throw new BadRequestException(`Token "${tokenValue}" has already been used`);
+    if (token.IsUsed[0] === 1) throw new BadRequestException(`Token "${tokenValue}" has already been used`);
     if (token.ExpiresAt < new Date()) throw new BadRequestException(`Token "${tokenValue}" has expired`);
 
     await this.confirmationTokenService.markTokenUsed(token.TokenID);
