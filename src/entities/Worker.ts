@@ -55,8 +55,6 @@ export class Worker {
   @Column({ length: 50, nullable: true })
   language: string;
 
-  @Column({ length: 255, nullable: true })
-  languageVideoUrl: string;
 
   @Column({ type: 'datetime', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date;
