@@ -229,101 +229,8 @@ export class SupervisorService implements IAuthUser {
     throw new BadRequestException('Failed to upload image to Cloudinary');
   }
 }
+
   async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
-    // 1. التأكد إن الـ supervisor assigned على التاسك دي
-    const assignment = await this.taskSupervisorRepo.findOne({
-      where: {
-        task: { id: taskId },
-        supervisor: { id: supervisorId },
-      },
-      relations: ['task'],
-    });
-
-    if (!assignment) {
-      throw new NotFoundException('You are not assigned as a supervisor for this task');
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const taskStart = new Date(assignment.task.startDate);
-    taskStart.setHours(0, 0, 0, 0);
-
-    const taskEnd = new Date(assignment.task.endDate);
-    taskEnd.setHours(0, 0, 0, 0);
-
-    // 2. التأكد إن اليوم ده جوا فترة التاسك
-     if (today < taskStart || today > taskEnd) {
-      throw new BadRequestException('Cannot upload attendance outside the task period');
-     }
-
-    const dateOnly = today.toISOString().split('T')[0]; // "2026-03-07"
-
-    // 3. Check لو الحضور اترفع النهارده قبل كده
-    const existingToday = await this.attendanceRepo.findOne({
-      where: {
-        task: { id: taskId },
-        attendanceDate: dateOnly as any,
-      },
-    });
-
-    if (existingToday) {
-      throw new BadRequestException('Attendance for today has already been uploaded');
-    }
-
-    // 4. parse الـ excel
-    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows: any[] = XLSX.utils.sheet_to_json(sheet);
-
-    if (!rows || rows.length === 0) {
-      throw new BadRequestException('Excel file is empty or has invalid format');
-    }
-
-    // 5. جيب العمال الـ confirmed للتاسك دي
-    const confirmedWorkers = await this.taskWorkerRepo.find({
-      where: {
-        task: { id: taskId },
-        confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
-      },
-      relations: ['worker'],
-    });
-
-    if (confirmedWorkers.length === 0) {
-      throw new BadRequestException('No confirmed workers found for this task');
-    }
-
-    // بناء Map للوصول السريع للـ worker object كامل
-    const workerMap = new Map(confirmedWorkers.map((tw) => [tw.worker.id, tw.worker]));
-    const confirmedWorkerIds = new Set(workerMap.keys());
-
-    // 6. بناء الـ attendance records
-    const attendanceRecords = rows
-      .filter((row) => confirmedWorkerIds.has(Number(row.workerId)))
-      .map((row) => {
-        const worker = workerMap.get(Number(row.workerId));
-
-        const dateStr = today.toISOString().split('T')[0];
-        const checkIn = row.checkIn ? new Date(`${dateStr}T${row.checkIn}`) : null;
-        const checkOut = row.checkOut ? new Date(`${dateStr}T${row.checkOut}`) : null;
-
-        const status =
-          row.status?.toUpperCase() === 'PRESENT' ? AttendanceStatusEnum.PRESENT : AttendanceStatusEnum.ABSENT;
-
-        return this.attendanceRepo.create({
-          task: assignment.task,
-          worker: worker,
-          attendanceDate: today,
-          checkInTime: checkIn,
-          checkOutTime: checkOut,
-          status,
-        });
-      });
-
-    if (attendanceRecords.length === 0) {
-      throw new BadRequestException('No valid worker IDs found in the excel file');
-    }
-async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
   // 1. التأكد إن الـ supervisor assigned على التاسك دي
   const assignment = await this.taskSupervisorRepo.findOne({
     where: {
@@ -413,8 +320,8 @@ async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multe
       const worker = workerMap.get(Number(row.workerId));
 
       // ملاحظة: ExcelJS قد يرجع القيم كـ String أو Date objects حسب تنسيق الخلية
-      const checkIn = row.checkIn ? new Date(`${dateOnly}T${row.checkIn}`) : null;
-      const checkOut = row.checkOut ? new Date(`${dateOnly}T${row.checkOut}`) : null;
+      const checkIn = row.checkIn ? new Date(${dateOnly}T${row.checkIn}) : null;
+      const checkOut = row.checkOut ? new Date(${dateOnly}T${row.checkOut}) : null;
 
       const status =
         String(row.status || '').toUpperCase() === 'PRESENT' ? AttendanceStatusEnum.PRESENT : AttendanceStatusEnum.ABSENT;
@@ -442,7 +349,7 @@ async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multe
   await this.taskSupervisorRepo.save(assignment);
 
   return {
-    message: `Attendance uploaded successfully for ${attendanceRecords.length} workers`,
+    message: Attendance uploaded successfully for ${attendanceRecords.length} workers,
     date: dateOnly,
     recordsCount: attendanceRecords.length,
   };
