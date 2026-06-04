@@ -687,3 +687,51 @@ export class SupervisorService implements IAuthUser {
   
 
 }
+async getDashboard(supervisorId: number): Promise<any> {
+  // 1. جلب كل المهام المسندة للمشرف
+  const assignments = await this.taskSupervisorRepo.find({
+    where: { supervisor: { id: supervisorId } },
+    relations: ['task'],
+  });
+
+  const tasks = assignments.map((a) => a.task);
+
+  // 2. حساب إحصائيات المهام
+  const totalTasks = tasks.length;
+  const currentTasks = tasks.filter((t) => t.status === TaskStatusEnum.IN_PROGRESS).length;
+  const completedTasks = tasks.filter((t) => t.status === TaskStatusEnum.COMPLETED).length;
+  const upcomingTasks = tasks.filter((t) => t.status === TaskStatusEnum.PENDING).length;
+
+  // 3. حساب إجمالي الأرباح المدفوعة
+  const payouts = await this.supervisorPayoutRepo.find({
+    where: {
+      supervisor: { id: supervisorId },
+      status: PayoutStatusEnum.PAID,
+    },
+  });
+
+  // التأكد من تحويل القيمة لـ Number لتجنب أخطاء الجمع
+  const totalEarnings = payouts.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+  // 4. تحديد المهمة القادمة (أقرب مهمة من حيث تاريخ البدء)
+  const nextTask = tasks
+    .filter((t) => t.status === TaskStatusEnum.PENDING)
+    .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0] || null;
+
+  // 5. إرجاع البيانات النهائية
+  return {
+    totalTasks,
+    currentTasks,
+    completedTasks,
+    upcomingTasks,
+    totalEarnings: parseFloat(totalEarnings.toFixed(2)),
+    nextTask: nextTask
+      ? { 
+          id: nextTask.id, 
+          eventName: nextTask.eventName, 
+          startDate: nextTask.startDate, 
+          location: nextTask.location 
+        }
+      : null,
+  };
+}
