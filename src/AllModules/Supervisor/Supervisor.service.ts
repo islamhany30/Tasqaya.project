@@ -683,11 +683,11 @@ export class SupervisorService implements IAuthUser {
         supervisingFees: task.supervisingFees,
       },
     };
-  }
-  
 
-}
-async getDashboard(supervisorId: number): Promise<any> {
+	  
+  }
+
+	async getDashboard(supervisorId: number): Promise<any> {
   // 1. جلب كل المهام المسندة للمشرف
   const assignments = await this.taskSupervisorRepo.find({
     where: { supervisor: { id: supervisorId } },
@@ -734,4 +734,7 @@ async getDashboard(supervisorId: number): Promise<any> {
         }
       : null,
   };
+}
+
+  
 }
