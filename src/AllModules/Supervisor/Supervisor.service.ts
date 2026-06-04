@@ -730,4 +730,4 @@ export class SupervisorService implements IAuthUser {
       },
     };
   }
-}
+
