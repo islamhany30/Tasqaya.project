@@ -681,5 +681,5 @@ Attendance uploaded successfully for ${attendanceRecords.length} workers
       },
     };
   }
-  }
+  
 
