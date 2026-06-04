@@ -306,12 +306,14 @@ export class SupervisorService implements IAuthUser {
     	const worker = workerMap.get(Number(row.workerId));
 
     	const dateStr = today.toISOString().split('T')[0];
-    	const checkIn = row.checkIn ? new Date(
-${dateStr}T${row.checkIn}
-) : null;
-    	const checkOut = row.checkOut ? new Date(
-${dateStr}T${row.checkOut}
-) : null;
+//     	const checkIn = row.checkIn ? new Date(
+// ${dateStr}T${row.checkIn}
+// ) : null;
+//     	const checkOut = row.checkOut ? new Date(
+// ${dateStr}T${row.checkOut}
+// ) : null;
+		const checkIn = row.checkIn ? new Date(`${dateStr}T${row.checkIn}`) : null;
+		const checkOut = row.checkOut ? new Date(`${dateStr}T${row.checkOut}`) : null;
 
     	const status =
       	row.status?.toUpperCase() === 'PRESENT' ? AttendanceStatusEnum.PRESENT : AttendanceStatusEnum.ABSENT;
@@ -339,9 +341,10 @@ ${dateStr}T${row.checkOut}
 	await this.taskSupervisorRepo.save(assignment);
 
 	return {
-  	message:
-Attendance uploaded successfully for ${attendanceRecords.length} workers
-,
+//   	message:
+// Attendance uploaded successfully for ${attendanceRecords.length} workers
+// ,
+	message: `Attendance uploaded successfully for ${attendanceRecords.length} workers`,
   	date: today.toISOString().split('T')[0],
   	recordsCount: attendanceRecords.length,
 	};
