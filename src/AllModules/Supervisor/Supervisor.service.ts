@@ -230,87 +230,122 @@ export class SupervisorService implements IAuthUser {
   }
 }
 
- async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
-    // 1. التحقق من صلاحية المشرف
-    const assignment = await this.taskSupervisorRepo.findOne({
-      where: { task: { id: taskId }, supervisor: { id: supervisorId } },
-      relations: ['task'],
-    });
+  
+      async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
+	// 1. التأكد إن الـ supervisor assigned على التاسك دي
+	const assignment = await this.taskSupervisorRepo.findOne({
+  	where: {
+    	task: { id: taskId },
+    	supervisor: { id: supervisorId },
+  	},
+  	relations: ['task'],
+	});
 
-    if (!assignment) throw new NotFoundException('You are not assigned as a supervisor');
+	if (!assignment) {
+  	throw new NotFoundException('You are not assigned as a supervisor for this task');
+	}
 
-    // 2. التحقق من الفترة الزمنية (بناءً على تاريخ اليوم)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const taskStart = new Date(assignment.task.startDate);
-    const taskEnd = new Date(assignment.task.endDate);
+	const today = new Date();
+	today.setHours(0, 0, 0, 0);
 
-    if (today < taskStart || today > taskEnd) {
-      throw new BadRequestException('Cannot upload attendance outside the task period');
-    }
+	const taskStart = new Date(assignment.task.startDate);
+	taskStart.setHours(0, 0, 0, 0);
 
-    const dateOnly = today.toISOString().split('T')[0];
+	const taskEnd = new Date(assignment.task.endDate);
+	taskEnd.setHours(0, 0, 0, 0);
 
-    // 3. التحقق من عدم التكرار لنفس اليوم
-    const existingToday = await this.attendanceRepo.findOne({
-      where: { task: { id: taskId }, attendanceDate: dateOnly as any },
-    });
-    if (existingToday) throw new BadRequestException('Attendance already uploaded today');
+	// 2. التأكد إن اليوم ده جوا فترة التاسك
+ 	if (today < taskStart || today > taskEnd) {
+  	throw new BadRequestException('Cannot upload attendance outside the task period');
+ 	}
 
-    // 4. معالجة الإكسيل
-    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+	const dateOnly = today.toISOString().split('T')[0]; // "2026-03-07"
 
-    if (!rows?.length) throw new BadRequestException('Excel file is empty');
+	// 3. Check لو الحضور اترفع النهارده قبل كده
+	const existingToday = await this.attendanceRepo.findOne({
+  	where: {
+    	task: { id: taskId },
+    	attendanceDate: dateOnly as any,
+  	},
+	});
 
-    // 5. جلب العمال المؤكدين
-    const confirmedWorkers = await this.taskWorkerRepo.find({
-      where: { task: { id: taskId }, confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED },
-      relations: ['worker'],
-    });
+	if (existingToday) {
+  	throw new BadRequestException('Attendance for today has already been uploaded');
+	}
 
-    const workerMap = new Map(confirmedWorkers.map((tw) => [tw.worker.id, tw.worker]));
+	// 4. parse الـ excel
+	const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+	const sheet = workbook.Sheets[workbook.SheetNames[0]];
+	const rows: any[] = XLSX.utils.sheet_to_json(sheet);
 
-    // 6. بناء سجلات الحضور
-    const attendanceRecords = rows
-      .filter((row) => workerMap.has(Number(row.workerId)))
-      .map((row) => {
-        const worker = workerMap.get(Number(row.workerId));
+	if (!rows || rows.length === 0) {
+  	throw new BadRequestException('Excel file is empty or has invalid format');
+	}
 
-        // نصيحة: تأكد أن التمبلت يرسل الوقت بصيغة HH:mm:ss
-        const checkIn = row.checkIn ? new Date(${dateOnly}T${row.checkIn}) : null;
-        const checkOut = row.checkOut ? new Date(${dateOnly}T${row.checkOut}) : null;
-        
-        const status = row.status?.toString().toUpperCase() === 'PRESENT' 
-            ? AttendanceStatusEnum.PRESENT 
-            : AttendanceStatusEnum.ABSENT;
+	// 5. جيب العمال الـ confirmed للتاسك دي
+	const confirmedWorkers = await this.taskWorkerRepo.find({
+  	where: {
+    	task: { id: taskId },
+    	confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+  	},
+  	relations: ['worker'],
+	});
 
-        return this.attendanceRepo.create({
-          task: assignment.task,
-          worker: worker!,
-          attendanceDate: today,
-          checkInTime: checkIn,
-          checkOutTime: checkOut,
-          status,
-        });
-      });
+	if (confirmedWorkers.length === 0) {
+  	throw new BadRequestException('No confirmed workers found for this task');
+	}
 
-    if (attendanceRecords.length === 0) {
-      throw new BadRequestException('No valid worker IDs found or match');
-    }
+	// بناء Map للوصول السريع للـ worker object كامل
+	const workerMap = new Map(confirmedWorkers.map((tw) => [tw.worker.id, tw.worker]));
+	const confirmedWorkerIds = new Set(workerMap.keys());
 
-    // 7. الحفظ
-    await this.attendanceRepo.save(attendanceRecords);
+	// 6. بناء الـ attendance records
+	const attendanceRecords = rows
+  	.filter((row) => confirmedWorkerIds.has(Number(row.workerId)))
+  	.map((row) => {
+    	const worker = workerMap.get(Number(row.workerId));
 
-    // 8. أرشفة الملف
-    assignment.attendanceFile = file.buffer;
-    assignment.attendanceUploadedAt = new Date();
-    await this.taskSupervisorRepo.save(assignment);
+    	const dateStr = today.toISOString().split('T')[0];
+    	const checkIn = row.checkIn ? new Date(
+${dateStr}T${row.checkIn}
+) : null;
+    	const checkOut = row.checkOut ? new Date(
+${dateStr}T${row.checkOut}
+) : null;
 
-    return { message: 'Uploaded successfully', count: attendanceRecords.length };
-}
-      
+    	const status =
+      	row.status?.toUpperCase() === 'PRESENT' ? AttendanceStatusEnum.PRESENT : AttendanceStatusEnum.ABSENT;
+
+    	return this.attendanceRepo.create({
+      	task: assignment.task,
+      	worker: worker,
+      	attendanceDate: today,
+      	checkInTime: checkIn,
+      	checkOutTime: checkOut,
+      	status,
+    	});
+  	});
+
+	if (attendanceRecords.length === 0) {
+  	throw new BadRequestException('No valid worker IDs found in the excel file');
+	}
+
+	// 7. حفظ الـ attendance records
+	await this.attendanceRepo.save(attendanceRecords);
+
+	// 8. تخزين الـ excel blob في TaskSupervisor للأرشفة
+	assignment.attendanceFile = file.buffer;
+	assignment.attendanceUploadedAt = new Date();
+	await this.taskSupervisorRepo.save(assignment);
+
+	return {
+  	message:
+Attendance uploaded successfully for ${attendanceRecords.length} workers
+,
+  	date: today.toISOString().split('T')[0],
+  	recordsCount: attendanceRecords.length,
+	};
+  }
   // async getMyTasks(supervisorId: number, status?: TaskStatusEnum): Promise<any> {
   //   const assignments = await this.taskSupervisorRepo.find({
   //     where: {
