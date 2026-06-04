@@ -230,112 +230,87 @@ export class SupervisorService implements IAuthUser {
   }
 }
 
-  
-async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
+ async uploadAttendance(taskId: number, supervisorId: number, file: Express.Multer.File) {
+    // 1. التحقق من صلاحية المشرف
     const assignment = await this.taskSupervisorRepo.findOne({
       where: { task: { id: taskId }, supervisor: { id: supervisorId } },
       relations: ['task'],
     });
 
-    if (!assignment) throw new NotFoundException('You are not assigned as a supervisor for this task');
+    if (!assignment) throw new NotFoundException('You are not assigned as a supervisor');
 
+    // 2. التحقق من الفترة الزمنية (بناءً على تاريخ اليوم)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const taskStart = new Date(assignment.task.startDate);
+    const taskEnd = new Date(assignment.task.endDate);
+
+    if (today < taskStart || today > taskEnd) {
+      throw new BadRequestException('Cannot upload attendance outside the task period');
+    }
 
     const dateOnly = today.toISOString().split('T')[0];
 
-    // ... (باقي المنطق كما هو) ...
-
-    const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(file.buffer);
-    const worksheet = workbook.getWorksheet('Attendance');
-    if (!worksheet) throw new BadRequestException('Sheet "Attendance" not found');
-
-    const rows: any[] = [];
-    worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
-      rows.push({
-        workerId: row.getCell(1).value,
-        workerName: row.getCell(2).value,
-        checkIn: row.getCell(3).text?.trim(),
-        checkOut: row.getCell(4).text?.trim(),
-        status: row.getCell(5).text?.trim(),
-      });
+    // 3. التحقق من عدم التكرار لنفس اليوم
+    const existingToday = await this.attendanceRepo.findOne({
+      where: { task: { id: taskId }, attendanceDate: dateOnly as any },
     });
+    if (existingToday) throw new BadRequestException('Attendance already uploaded today');
 
+    // 4. معالجة الإكسيل
+    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+
+    if (!rows?.length) throw new BadRequestException('Excel file is empty');
+
+    // 5. جلب العمال المؤكدين
     const confirmedWorkers = await this.taskWorkerRepo.find({
       where: { task: { id: taskId }, confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED },
       relations: ['worker'],
     });
 
     const workerMap = new Map(confirmedWorkers.map((tw) => [tw.worker.id, tw.worker]));
-    const attendanceRecords: Attendance[] = []; // تم تعريف النوع هنا لحل خطأ never
 
-    for (const row of rows) {
-      const workerId = Number(row.workerId);
-      if (!workerMap.has(workerId)) continue;
+    // 6. بناء سجلات الحضور
+    const attendanceRecords = rows
+      .filter((row) => workerMap.has(Number(row.workerId)))
+      .map((row) => {
+        const worker = workerMap.get(Number(row.workerId));
 
-      const worker = workerMap.get(workerId);
-      const statusText = String(row.status || '').toUpperCase();
-      
-      attendanceRecords.push(
-        this.attendanceRepo.create({
+        // نصيحة: تأكد أن التمبلت يرسل الوقت بصيغة HH:mm:ss
+        const checkIn = row.checkIn ? new Date(${dateOnly}T${row.checkIn}) : null;
+        const checkOut = row.checkOut ? new Date(${dateOnly}T${row.checkOut}) : null;
+        
+        const status = row.status?.toString().toUpperCase() === 'PRESENT' 
+            ? AttendanceStatusEnum.PRESENT 
+            : AttendanceStatusEnum.ABSENT;
+
+        return this.attendanceRepo.create({
           task: assignment.task,
-          worker: worker,
+          worker: worker!,
           attendanceDate: today,
-          status: statusText === 'PRESENT' ? AttendanceStatusEnum.PRESENT : AttendanceStatusEnum.ABSENT,
-        }),
-      );
+          checkInTime: checkIn,
+          checkOutTime: checkOut,
+          status,
+        });
+      });
+
+    if (attendanceRecords.length === 0) {
+      throw new BadRequestException('No valid worker IDs found or match');
     }
 
+    // 7. الحفظ
     await this.attendanceRepo.save(attendanceRecords);
+
+    // 8. أرشفة الملف
     assignment.attendanceFile = file.buffer;
+    assignment.attendanceUploadedAt = new Date();
     await this.taskSupervisorRepo.save(assignment);
 
-    return { message: 'Attendance uploaded successfully', recordsCount: attendanceRecords.length };
-  }
-
-
-  async getDashboard(supervisorId: number): Promise<any> {
-    // جيب كل assignments الـ supervisor
-    const assignments = await this.taskSupervisorRepo.find({
-      where: { supervisor: { id: supervisorId } },
-      relations: ['task'],
-    });
-
-    const tasks = assignments.map((a) => a.task);
-
-    const totalTasks = tasks.length;
-    const currentTasks = tasks.filter((t) => t.status === TaskStatusEnum.IN_PROGRESS).length;
-    const completedTasks = tasks.filter((t) => t.status === TaskStatusEnum.COMPLETED).length;
-    const upcomingTasks = tasks.filter((t) => t.status === TaskStatusEnum.PENDING).length;
-
-    const payouts = await this.supervisorPayoutRepo.find({
-      where: {
-        supervisor: { id: supervisorId },
-        status: PayoutStatusEnum.PAID,
-      },
-    });
-
-    const totalEarnings = payouts.reduce((sum, p) => sum + Number(p.amount), 0);
-
-    const nextTask =
-      tasks
-        .filter((t) => t.status === TaskStatusEnum.PENDING)
-        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0] || null;
-
-    return {
-      totalTasks,
-      currentTasks,
-      completedTasks,
-      upcomingTasks,
-      totalEarnings: parseFloat(totalEarnings.toFixed(2)),
-      nextTask: nextTask
-        ? { id: nextTask.id, eventName: nextTask.eventName, startDate: nextTask.startDate, location: nextTask.location }
-        : null,
-    };
-  }
-
+    return { message: 'Uploaded successfully', count: attendanceRecords.length };
+}
+      
   // async getMyTasks(supervisorId: number, status?: TaskStatusEnum): Promise<any> {
   //   const assignments = await this.taskSupervisorRepo.find({
   //     where: {
