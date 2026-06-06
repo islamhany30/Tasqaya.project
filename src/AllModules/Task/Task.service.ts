@@ -639,7 +639,7 @@ export class TaskService {
     const publishedAt = new Date();
 
     const deadline = new Date(task.startDate);
-    deadline.setHours(deadline.getHours() - 48);
+    deadline.setHours(deadline.getHours() - 49);
     // const deadline = new Date(Date.now() + 5 * 60 * 1000);
 
     const jobPost = this.jobPostRepo.create({
