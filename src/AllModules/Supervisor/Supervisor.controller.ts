@@ -189,4 +189,18 @@ async uploadProfileImage(@UploadedFile() image: Express.Multer.File, @Req() req:
   ) {
     return this.supervisorService.getTaskDetailsForSupervisor(taskId, Number(req.user.sub));
   }
+
+  @Get(':taskId/confirmed-workers')
+@UseGuards(JwtAccountAuthGuard)
+async getConfirmedWorkersForTask(
+  @Param('taskId', ParseIntPipe) taskId: number,
+  @Req() req,
+) {
+  const supervisorId = req.user.sub;
+
+  return await this.supervisorService.getConfirmedWorkers(
+    taskId,
+    supervisorId,
+  );
+}
 }
