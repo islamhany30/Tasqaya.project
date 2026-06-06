@@ -267,6 +267,9 @@ export class TaskService {
       workertype: task.workerTypes,
       durationHoursPerDay: task.durationHoursPerDay,
       requiredWorkerStatus: task.requiredWorkerStatus,
+      genders: task.genders,           // ← add this
+      hasUniform: task.hasUniform,     // ← add this
+      uniformDescription: task.uniformDescription,  // ← add this
 
       financials: {
         workerBaseCost: task.baseWorkersCost,
