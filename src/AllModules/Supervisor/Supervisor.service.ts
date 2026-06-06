@@ -736,5 +736,49 @@ export class SupervisorService implements IAuthUser {
   };
 }
 
+	async getConfirmedWorkers(taskId: number, supervisorId: number) {
+  // 1. التأكد إن السوبرفايزر assigned على التاسك
+  const assignment = await this.taskSupervisorRepo.findOne({
+    where: {
+      task: { id: taskId },
+      supervisor: { id: supervisorId },
+    },
+    relations: ['task'],
+  });
+
+  if (!assignment) {
+    throw new NotFoundException(
+      'You are not assigned as a supervisor for this task',
+    );
+  }
+
+  // 2. جلب العمال الـ confirmed
+  const confirmedWorkers = await this.taskWorkerRepo.find({
+    where: {
+      task: { id: taskId },
+      confirmationStatus: WorkerConfirmationStatusEnum.CONFIRMED,
+    },
+    relations: ['worker'],
+  });
+
+  if (confirmedWorkers.length === 0) {
+    throw new BadRequestException(
+      'No confirmed workers found for this task',
+    );
+  }
+
+  // 3. mapping بنفس ستايل السيرفس
+  const workers = confirmedWorkers.map((tw) => ({
+    id: tw.worker.id,
+    fullName: tw.worker.fullName,
+    profilePicture: tw.worker.profileImage || 'default-avatar-url',
+  }));
+
+  return {
+    count: workers.length,
+    workers,
+  };
+}
+
   
 }
